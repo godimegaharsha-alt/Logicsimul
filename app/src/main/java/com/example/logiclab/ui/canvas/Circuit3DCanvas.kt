@@ -289,10 +289,38 @@ fun Circuit3DCanvas(
             textAlign = Paint.Align.CENTER
         }
     }
+    val trainerTitleLargePaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 12f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            isAntiAlias = true
+            textAlign = Paint.Align.LEFT
+        }
+    }
+    val trainerModelPaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 11f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            isAntiAlias = true
+            textAlign = Paint.Align.RIGHT
+        }
+    }
+    val trainerFooterPaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 6.8f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            isAntiAlias = true
+            textAlign = Paint.Align.RIGHT
+        }
+    }
 
     val coroutineScope = rememberCoroutineScope()
     val trainerSwitchLocalStates = remember { mutableStateMapOf<Int, Boolean>() }
     var isPulserPressed by remember { mutableStateOf(false) }
+    var isTrainerPowerOn by remember { mutableStateOf(true) }
 
     val currentComponents by rememberUpdatedState(components)
     val currentWires by rememberUpdatedState(wires)
@@ -468,18 +496,18 @@ fun Circuit3DCanvas(
                                     val by1 = boardBounds.second.y
                                     val bw = bx1 - bx0
 
-                                    // 1. Check all 12 toggle switches in INPUT SECTION (S12..S1)
-                                    val swCount = 12
-                                    val inputX0 = bx0 + 12f
-                                    val inputX1 = bx0 + bw * 0.58f
-                                    val swSpacing = (inputX1 - inputX0) / (swCount + 1)
-                                    val swY = by1 - 30f
+                                    // 1. Check vertical logic input toggle switches on the left column (S1..S8)
+                                    val swCount = 8
+                                    val leftColX = bx0 + 36f
+                                    val topSwY = by0 + 44f
+                                    val botSwY = by1 - 65f
+                                    val swSpacingY = (botSwY - topSwY) / (swCount - 1)
                                     val circuitSwitches = currentComponents.filter { it.type == "SWITCH" }
 
                                     for (i in 0 until swCount) {
-                                        val sx = inputX0 + (i + 1) * swSpacing
-                                        val rX = (sx - boardCenter.x) * cosY - (swY - boardCenter.y) * sinY
-                                        val rY = (sx - boardCenter.x) * sinY + (swY - boardCenter.y) * cosY
+                                        val sy = topSwY + i * swSpacingY
+                                        val rX = (leftColX - boardCenter.x) * cosY - (sy - boardCenter.y) * sinY
+                                        val rY = (leftColX - boardCenter.x) * sinY + (sy - boardCenter.y) * cosY
                                         val projX = screenCenter.x + panOffset.x + rX * zoomScale
                                         val projY = screenCenter.y + panOffset.y + (rY * sinP - 8f * cos(pitchRad)) * zoomScale
                                         val dist = (startScreenPos - Offset(projX, projY)).getDistance()
@@ -497,46 +525,38 @@ fun Circuit3DCanvas(
                                         }
                                     }
 
-                                    // 2. Check Pulser Pushbutton in Bottom-Right
+                                    // 2. Check Power On Switch at bottom-left
                                     if (!handledTrainerTap) {
-                                        val pulserX = bx0 + bw * 0.925f
-                                        val pulserY = by1 - 36f
-                                        val rX = (pulserX - boardCenter.x) * cosY - (pulserY - boardCenter.y) * sinY
-                                        val rY = (pulserX - boardCenter.x) * sinY + (pulserY - boardCenter.y) * cosY
+                                        val pwrX = bx0 + 36f
+                                        val pwrY = by1 - 28f
+                                        val rX = (pwrX - boardCenter.x) * cosY - (pwrY - boardCenter.y) * sinY
+                                        val rY = (pwrX - boardCenter.x) * sinY + (pwrY - boardCenter.y) * cosY
                                         val projX = screenCenter.x + panOffset.x + rX * zoomScale
-                                        val projY = screenCenter.y + panOffset.y + (rY * sinP - 10f * cos(pitchRad)) * zoomScale
+                                        val projY = screenCenter.y + panOffset.y + (rY * sinP - 8f * cos(pitchRad)) * zoomScale
                                         val dist = (startScreenPos - Offset(projX, projY)).getDistance()
                                         if (dist <= 28f * zoomScale.coerceIn(0.7f, 1.8f)) {
-                                            isPulserPressed = true
-                                            coroutineScope.launch {
-                                                delay(180L)
-                                                isPulserPressed = false
-                                            }
-                                            val clkComp = currentComponents.find { it.type == "CLOCK" || it.type == "OSCILLATOR" }
-                                            if (clkComp != null) {
-                                                currentOnToggle(clkComp.id)
-                                            }
+                                            isTrainerPowerOn = !isTrainerPowerOn
                                             AudioEngine.playClickSound()
                                             handledTrainerTap = true
                                         }
                                     }
 
-                                    // 3. Check 5 IC Bays (U1..U5)
+                                    // 3. Check 5 Gate IC Chips in center
                                     if (!handledTrainerTap) {
                                         val logicComps = currentComponents.filter { it.type != "SWITCH" && it.type != "LED" && it.type != "DIGITAL_PROBE" }
-                                        val bayAreaY0 = by0 + 100f
-                                        val bayAreaY1 = by1 - 92f
-                                        val bayW = (bw - 20f) / 5f
-                                        for (bIdx in 0 until 5) {
-                                            val bX = bx0 + 10f + bIdx * bayW + bayW / 2f
-                                            val bY = (bayAreaY0 + bayAreaY1) / 2f
-                                            val rX = (bX - boardCenter.x) * cosY - (bY - boardCenter.y) * sinY
-                                            val rY = (bX - boardCenter.x) * sinY + (bY - boardCenter.y) * cosY
+                                        val gateAreaX0 = bx0 + 64f
+                                        val gateAreaX1 = bx1 - 64f
+                                        val colW = (gateAreaX1 - gateAreaX0) / 5f
+                                        val chipCenterY = by0 + (by1 - by0) * 0.45f
+                                        for (cIdx in 0 until 5) {
+                                            val cx = gateAreaX0 + cIdx * colW + colW / 2f
+                                            val rX = (cx - boardCenter.x) * cosY - (chipCenterY - boardCenter.y) * sinY
+                                            val rY = (cx - boardCenter.x) * sinY + (chipCenterY - boardCenter.y) * cosY
                                             val projX = screenCenter.x + panOffset.x + rX * zoomScale
                                             val projY = screenCenter.y + panOffset.y + (rY * sinP - 10f * cos(pitchRad)) * zoomScale
                                             val dist = (startScreenPos - Offset(projX, projY)).getDistance()
-                                            if (dist <= 38f * zoomScale.coerceIn(0.7f, 1.8f)) {
-                                                val comp = logicComps.getOrNull(bIdx)
+                                            if (dist <= 36f * zoomScale.coerceIn(0.7f, 1.8f)) {
+                                                val comp = logicComps.getOrNull(cIdx)
                                                 if (comp != null) {
                                                     currentOnSelect(comp.id)
                                                     AudioEngine.playClickSound()
@@ -634,163 +654,89 @@ fun Circuit3DCanvas(
 
             if (board3DStyle == Board3DStyle.IC_TRAINER_KIT) {
                 // =========================================================================================
-                // AUTHENTIC DIGITAL IC TRAINER KIT APPARATUS IN WOODEN BRIEFCASE (FROM REFERENCE IMAGE)
+                // AUTHENTIC PHY-41 LOGIC GATES TRAINER APPARATUS (FAITHFUL TO USER REFERENCE PHOTO)
                 // =========================================================================================
                 val bw = bx1 - bx0
                 val bh = by1 - by0
-                val woodMargin = 26f
-                val wx0 = bx0 - woodMargin
-                val wy0 = by0 - woodMargin
-                val wx1 = bx1 + woodMargin
-                val wy1 = by1 + woodMargin
+                val chassisMargin = 22f
+                val cx0 = bx0 - chassisMargin
+                val cy0 = by0 - chassisMargin
+                val cx1 = bx1 + chassisMargin
+                val cy1 = by1 + chassisMargin
 
-                // 1. Wooden Briefcase Base Box (Solid Timber Chassis)
-                val wb0 = project3D(wx0, wy0, -22f)
-                val wb1 = project3D(wx1, wy0, -22f)
-                val wb2 = project3D(wx1, wy1, -22f)
-                val wb3 = project3D(wx0, wy1, -22f)
+                // 1. Industrial Powder-Coated Metal Console Chassis (Silver / Grey Steel Enclosure)
+                val cb0 = project3D(cx0, cy0, -20f)
+                val cb1 = project3D(cx1, cy0, -20f)
+                val cb2 = project3D(cx1, cy1, -20f)
+                val cb3 = project3D(cx0, cy1, -20f)
 
-                val wt0 = project3D(wx0, wy0, 0f)
-                val wt1 = project3D(wx1, wy0, 0f)
-                val wt2 = project3D(wx1, wy1, 0f)
-                val wt3 = project3D(wx0, wy1, 0f)
+                val ct0 = project3D(cx0, cy0, 0f)
+                val ct1 = project3D(cx1, cy0, 0f)
+                val ct2 = project3D(cx1, cy1, 0f)
+                val ct3 = project3D(cx0, cy1, 0f)
 
-                // Suitcase Drop Shadow
+                // Chassis Drop Shadow
                 if (showDropShadows) {
                     drawPath(
                         path = Path().apply {
-                            moveTo(wb0.x, wb0.y + 16f)
-                            lineTo(wb1.x, wb1.y + 16f)
-                            lineTo(wb2.x, wb2.y + 16f)
-                            lineTo(wb3.x, wb3.y + 16f)
+                            moveTo(cb0.x, cb0.y + 14f)
+                            lineTo(cb1.x, cb1.y + 14f)
+                            lineTo(cb2.x, cb2.y + 14f)
+                            lineTo(cb3.x, cb3.y + 14f)
                             close()
                         },
-                        color = Color.Black.copy(alpha = 0.55f)
+                        color = Color.Black.copy(alpha = 0.52f)
                     )
                 }
 
-                // Front Wooden Wall of Suitcase
+                // Front Slanted Metal Bevel Wall of Chassis
                 drawPath(
                     path = Path().apply {
-                        moveTo(wt3.x, wt3.y)
-                        lineTo(wt2.x, wt2.y)
-                        lineTo(wb2.x, wb2.y)
-                        lineTo(wb3.x, wb3.y)
+                        moveTo(ct3.x, ct3.y)
+                        lineTo(ct2.x, ct2.y)
+                        lineTo(cb2.x, cb2.y)
+                        lineTo(cb3.x, cb3.y)
                         close()
                     },
-                    color = Color(0xFFC08344) // Warm pine wood
+                    color = Color(0xFF90A4AE) // Industrial powder-coated grey
                 )
                 drawPath(
                     path = Path().apply {
-                        moveTo(wt3.x, wt3.y)
-                        lineTo(wt2.x, wt2.y)
-                        lineTo(wb2.x, wb2.y)
-                        lineTo(wb3.x, wb3.y)
+                        moveTo(ct3.x, ct3.y)
+                        lineTo(ct2.x, ct2.y)
+                        lineTo(cb2.x, cb2.y)
+                        lineTo(cb3.x, cb3.y)
                         close()
                     },
-                    color = Color(0xFF825220),
+                    color = Color(0xFF607D8B),
                     style = Stroke(1.5f)
                 )
 
-                // Right Wooden Wall of Suitcase
+                // Right Side Metal Wall of Chassis
                 drawPath(
                     path = Path().apply {
-                        moveTo(wt1.x, wt1.y)
-                        lineTo(wt2.x, wt2.y)
-                        lineTo(wb2.x, wb2.y)
-                        lineTo(wb1.x, wb1.y)
+                        moveTo(ct1.x, ct1.y)
+                        lineTo(ct2.x, ct2.y)
+                        lineTo(cb2.x, cb2.y)
+                        lineTo(cb1.x, cb1.y)
                         close()
                     },
-                    color = Color(0xFF8E5624) // Shadow wood side
+                    color = Color(0xFF78909C) // Shadow side of metal chassis
                 )
 
-                // Top Wooden Bevel Framing the Faceplate
+                // Top Metal Rim Framing the Green Faceplate
                 drawPath(
                     path = Path().apply {
-                        moveTo(wt0.x, wt0.y)
-                        lineTo(wt1.x, wt1.y)
-                        lineTo(wt2.x, wt2.y)
-                        lineTo(wt3.x, wt3.y)
+                        moveTo(ct0.x, ct0.y)
+                        lineTo(ct1.x, ct1.y)
+                        lineTo(ct2.x, ct2.y)
+                        lineTo(ct3.x, ct3.y)
                         close()
                     },
-                    color = Color(0xFFCFA163)
+                    color = Color(0xFFB0BEC5)
                 )
 
-                // 2. Open Wooden Suitcase Lid with Deep Green Felt/Velvet Lining (Angled Up & Back)
-                val lt0 = project3D(wx0, wy0, 0f)
-                val lt1 = project3D(wx1, wy0, 0f)
-                val ltTop0 = project3D(wx0, wy0 - 130f, 155f)
-                val ltTop1 = project3D(wx1, wy0 - 130f, 155f)
-
-                // Outer Wooden Lid Shell
-                drawPath(
-                    path = Path().apply {
-                        moveTo(lt0.x, lt0.y)
-                        lineTo(lt1.x, lt1.y)
-                        lineTo(ltTop1.x, ltTop1.y)
-                        lineTo(ltTop0.x, ltTop0.y)
-                        close()
-                    },
-                    color = Color(0xFFB57A3D)
-                )
-                drawPath(
-                    path = Path().apply {
-                        moveTo(lt0.x, lt0.y)
-                        lineTo(lt1.x, lt1.y)
-                        lineTo(ltTop1.x, ltTop1.y)
-                        lineTo(ltTop0.x, ltTop0.y)
-                        close()
-                    },
-                    color = Color(0xFF7A4A1C),
-                    style = Stroke(1.8f)
-                )
-
-                // Inner Recessed Deep Green Velvet/Felt Lining in the Lid
-                val lidIn0 = project3D(wx0 + 10f, wy0 - 5f, 3f)
-                val lidIn1 = project3D(wx1 - 10f, wy0 - 5f, 3f)
-                val lidInTop1 = project3D(wx1 - 10f, wy0 - 124f, 150f)
-                val lidInTop0 = project3D(wx0 + 10f, wy0 - 124f, 150f)
-
-                drawPath(
-                    path = Path().apply {
-                        moveTo(lidIn0.x, lidIn0.y)
-                        lineTo(lidIn1.x, lidIn1.y)
-                        lineTo(lidInTop1.x, lidInTop1.y)
-                        lineTo(lidInTop0.x, lidInTop0.y)
-                        close()
-                    },
-                    color = Color(0xFF0C3825) // Authentic green velvet lining
-                )
-                drawPath(
-                    path = Path().apply {
-                        moveTo(lidIn0.x, lidIn0.y)
-                        lineTo(lidIn1.x, lidIn1.y)
-                        lineTo(lidInTop1.x, lidInTop1.y)
-                        lineTo(lidInTop0.x, lidInTop0.y)
-                        close()
-                    },
-                    color = Color(0xFF051C13),
-                    style = Stroke(1.2f)
-                )
-
-                // Two Brass Hinges along Top Wooden Edge
-                val h1 = project3D(wx0 + (wx1 - wx0) * 0.22f, wy0, 0.5f)
-                val h2 = project3D(wx0 + (wx1 - wx0) * 0.78f, wy0, 0.5f)
-                drawCircle(color = Color(0xFFD4AF37), radius = 5.5f, center = h1)
-                drawCircle(color = Color(0xFFD4AF37), radius = 5.5f, center = h2)
-                drawCircle(color = Color(0xFF422C0A), radius = 1.6f, center = h1)
-                drawCircle(color = Color(0xFF422C0A), radius = 1.6f, center = h2)
-
-                // Front Black Textured Carrying Handle on Front Wooden Wall
-                val handleCenter = project3D(boardCenter.x, wy1 + 4f, -11f)
-                val hMountL = project3D(boardCenter.x - 24f, wy1 + 2f, -11f)
-                val hMountR = project3D(boardCenter.x + 24f, wy1 + 2f, -11f)
-                drawCircle(color = Color(0xFFCFD8DC), radius = 4f, center = hMountL)
-                drawCircle(color = Color(0xFFCFD8DC), radius = 4f, center = hMountR)
-                drawLine(color = Color(0xFF1E2124), start = hMountL, end = hMountR, strokeWidth = 5.2f, cap = StrokeCap.Round)
-                drawLine(color = Color(0xFF424242), start = hMountL, end = hMountR, strokeWidth = 2.4f, cap = StrokeCap.Round)
-
-                // 3. Main Industrial Deep Green PCB Faceplate
+                // 2. Main Industrial Emerald Green PCB Faceplate
                 drawPath(
                     path = Path().apply {
                         moveTo(t0.x, t0.y)
@@ -799,7 +745,7 @@ fun Circuit3DCanvas(
                         lineTo(t3.x, t3.y)
                         close()
                     },
-                    color = Color(0xFF0E4A35) // Authentic trainer kit green soldermask
+                    color = Color(0xFF0D3B2E) // Authentic lab green soldermask
                 )
 
                 // Crisp White Outer Silkscreen Frame Border
@@ -816,301 +762,471 @@ fun Circuit3DCanvas(
                         close()
                     },
                     color = Color.White.copy(alpha = 0.95f),
-                    style = Stroke(2.2f)
+                    style = Stroke(2f)
                 )
 
                 // 4 Corner Chrome Mounting Screws & Standoffs
                 val screwPositions = listOf(
-                    Offset(bx0 + 12f, by0 + 12f),
-                    Offset(bx1 - 12f, by0 + 12f),
-                    Offset(bx0 + 12f, by1 - 12f),
-                    Offset(bx1 - 12f, by1 - 12f),
-                    Offset(boardCenter.x, by1 - 12f),
-                    Offset(boardCenter.x, by0 + 12f)
+                    Offset(bx0 + 10f, by0 + 10f),
+                    Offset(bx1 - 10f, by0 + 10f),
+                    Offset(bx0 + 10f, by1 - 10f),
+                    Offset(bx1 - 10f, by1 - 10f),
+                    Offset(boardCenter.x, by0 + 8f),
+                    Offset(boardCenter.x, by1 - 8f)
                 )
                 for (sc in screwPositions) {
                     val sProj = project3D(sc.x, sc.y, 1f)
-                    drawCircle(color = Color(0xFFCFD8DC), radius = 4.6f, center = sProj)
-                    drawCircle(color = Color(0xFF78909C), radius = 3.6f, center = sProj)
-                    drawLine(color = Color(0xFF263238), start = Offset(sProj.x - 2.5f, sProj.y), end = Offset(sProj.x + 2.5f, sProj.y), strokeWidth = 1f)
-                    drawLine(color = Color(0xFF263238), start = Offset(sProj.x, sProj.y - 2.5f), end = Offset(sProj.x, sProj.y + 2.5f), strokeWidth = 1f)
+                    drawCircle(color = Color(0xFFCFD8DC), radius = 4.4f, center = sProj)
+                    drawCircle(color = Color(0xFF78909C), radius = 3.4f, center = sProj)
+                    drawLine(color = Color(0xFF263238), start = Offset(sProj.x - 2.2f, sProj.y), end = Offset(sProj.x + 2.2f, sProj.y), strokeWidth = 1f)
+                    drawLine(color = Color(0xFF263238), start = Offset(sProj.x, sProj.y - 2.2f), end = Offset(sProj.x, sProj.y + 2.2f), strokeWidth = 1f)
                 }
 
                 // =========================================================================================
-                // SECTION A: TOP ROW (OUTPUT SECTION + 7 SEGMENT DISPLAY SECTION)
+                // AUTHENTIC SILKSCREEN BRANDING (FROM USER'S PHY-41 LAB TRAINER REFERENCE PHOTO)
                 // =========================================================================================
-                val topY0 = by0 + 12f
-                val topY1 = by0 + 72f
-                val splitX = bx0 + bw * 0.60f
+                // Top-Left: "Polytech" logo and crest
+                val polytechPos = project3D(bx0 + 26f, by0 + 18f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("Polytech", polytechPos.x, polytechPos.y, trainerTitleLargePaint)
+                // Stylized wave crest next to brand
+                val emblemCenter = project3D(bx0 + 15f, by0 + 14f, 0.8f)
+                drawCircle(color = Color.White, radius = 5.2f, center = emblemCenter, style = Stroke(1.2f))
+                drawLine(color = Color.White, start = Offset(emblemCenter.x - 3f, emblemCenter.y), end = Offset(emblemCenter.x + 3f, emblemCenter.y), strokeWidth = 1.2f)
 
-                // --- A1. OUTPUT SECTION (Left) ---
-                val outBoxP0 = project3D(bx0 + 10f, topY0, 0.6f)
-                val outBoxP1 = project3D(splitX - 6f, topY0, 0.6f)
-                val outBoxP2 = project3D(splitX - 6f, topY1, 0.6f)
-                val outBoxP3 = project3D(bx0 + 10f, topY1, 0.6f)
+                // Top-Right: "PHY-41"
+                val phyPos = project3D(bx1 - 42f, by0 + 18f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("PHY-41", phyPos.x, phyPos.y, trainerModelPaint)
+
+                // Bottom-Left: "LOGIC GATES TRAINER"
+                val trainerTitlePos = project3D(bx0 + 84f, by1 - 8f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("LOGIC GATES TRAINER", trainerTitlePos.x, trainerTitlePos.y, trainerTitleLargePaint)
+
+                // Bottom-Right: "HYDERABAD, PHONE:27537493,27547483"
+                val phonePos = project3D(bx1 - 100f, by1 - 8f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("HYDERABAD, PHONE:27537493,27547483", phonePos.x, phonePos.y, trainerFooterPaint)
+
+                // =========================================================================================
+                // LEFT COLUMN: 8 VERTICAL INPUT TOGGLE SWITCHES + POWER ON CONTROL
+                // =========================================================================================
+                val inColW = 54f
+                val inX0 = bx0 + 8f
+                val inX1 = bx0 + inColW
+                val inTopY = by0 + 26f
+                val inBotY = by1 - 48f
+
+                // Left Column Silkscreen Box
+                val inBox0 = project3D(inX0, inTopY, 0.6f)
+                val inBox1 = project3D(inX1, inTopY, 0.6f)
+                val inBox2 = project3D(inX1, inBotY, 0.6f)
+                val inBox3 = project3D(inX0, inBotY, 0.6f)
                 drawPath(
                     path = Path().apply {
-                        moveTo(outBoxP0.x, outBoxP0.y)
-                        lineTo(outBoxP1.x, outBoxP1.y)
-                        lineTo(outBoxP2.x, outBoxP2.y)
-                        lineTo(outBoxP3.x, outBoxP3.y)
+                        moveTo(inBox0.x, inBox0.y)
+                        lineTo(inBox1.x, inBox1.y)
+                        lineTo(inBox2.x, inBox2.y)
+                        lineTo(inBox3.x, inBox3.y)
                         close()
                     },
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = Color.White.copy(alpha = 0.9f),
                     style = Stroke(1.4f)
                 )
-                val outTitlePos = project3D((bx0 + 10f + splitX - 6f) / 2f, topY0 + 9f, 0.8f)
-                drawContext.canvas.nativeCanvas.drawText("OUTPUT SECTION", outTitlePos.x, outTitlePos.y, trainerWhiteHeaderPaint)
+                val inHeaderPos = project3D((inX0 + inX1) / 2f, inTopY + 10f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("INPUTS", inHeaderPos.x, inHeaderPos.y, trainerWhiteHeaderPaint)
 
-                // 12 Output LED Indicators + 12 Output Terminal Sockets (L12..L1, OP12..OP1)
-                val ledCount = 12
-                val ledX0 = bx0 + 20f
-                val ledX1 = splitX - 16f
-                val ledSpacing = (ledX1 - ledX0) / (ledCount - 1)
+                // 8 Vertical Metal Toggle Switches (1..8) with Turret Posts and 1/0 Silkscreen
+                val numInSwitches = 8
+                val swStepY = (inBotY - (inTopY + 16f)) / numInSwitches
+                val circuitSwitches = currentComponents.filter { it.type == "SWITCH" }
+
+                for (i in 0 until numInSwitches) {
+                    val swY = inTopY + 20f + i * swStepY
+                    val swX = inX0 + 20f
+                    val sockX = inX0 + 40f
+                    val swNum = "${i + 1}"
+
+                    val mappedSw = circuitSwitches.getOrNull(i)
+                    val isSwOn = trainerSwitchLocalStates[i] ?: (mappedSw?.switchState ?: false)
+
+                    // Silkscreen "1" (top/UP) and "0" (bottom/DOWN)
+                    val lbl1Pos = project3D(swX, swY - 8f, 0.8f)
+                    val lbl0Pos = project3D(swX, swY + 9f, 0.8f)
+                    drawContext.canvas.nativeCanvas.drawText("1", lbl1Pos.x, lbl1Pos.y, trainerPinNumPaint)
+                    drawContext.canvas.nativeCanvas.drawText("0", lbl0Pos.x, lbl0Pos.y, trainerPinNumPaint)
+
+                    // Metal Lever Toggle Switch
+                    val swBase = project3D(swX, swY, 1.8f)
+                    val tiltY = if (isSwOn) -5f else 5f // UP is 1, DOWN is 0
+                    val leverTip = project3D(swX, swY + tiltY, 14f)
+
+                    // Threaded Chrome Hex Collar & Bushing
+                    drawCircle(color = Color(0xFF546E7A), radius = 6.8f, center = swBase)
+                    drawCircle(color = Color(0xFFCFD8DC), radius = 5.2f, center = swBase)
+                    drawCircle(color = Color(0xFF263238), radius = 3.4f, center = swBase)
+
+                    // Solid Metal Lever Arm
+                    drawLine(color = Color(0xFF263238), start = swBase, end = leverTip, strokeWidth = 3.6f, cap = StrokeCap.Round)
+                    drawLine(color = Color(0xFFCFD8DC), start = swBase, end = leverTip, strokeWidth = 2.4f, cap = StrokeCap.Round)
+                    drawLine(color = Color.White.copy(alpha = 0.9f), start = swBase, end = leverTip, strokeWidth = 1f, cap = StrokeCap.Round)
+
+                    // Spherical Polished Chrome Bat Tip
+                    drawCircle(color = Color(0xFF455A64), radius = 4.2f, center = leverTip)
+                    drawCircle(color = Color(0xFFECEFF1), radius = 3.4f, center = leverTip)
+                    drawCircle(color = Color.White, radius = 1.2f, center = Offset(leverTip.x - 0.8f, leverTip.y - 0.8f))
+
+                    // Green Glow ring when active (1)
+                    if (isSwOn) {
+                        drawCircle(color = Color(0xFF00E676).copy(alpha = 0.65f), radius = 7f, center = swBase, style = Stroke(1.2f))
+                    }
+
+                    // Silver Turret Binding Post Socket for Patch Cord
+                    val sockCenter = project3D(sockX, swY, 1.6f)
+                    drawCircle(color = Color.White, radius = 4.6f, center = sockCenter, style = Stroke(0.8f))
+                    drawCircle(color = Color(0xFFCFD8DC), radius = 3.6f, center = sockCenter)
+                    drawCircle(color = Color(0xFF1E2124), radius = 1.8f, center = sockCenter)
+
+                    // Switch index label 1..8
+                    val numPos = project3D(inX0 + 7f, swY + 2f, 0.8f)
+                    drawContext.canvas.nativeCanvas.drawText(swNum, numPos.x, numPos.y, trainerPinNumPaint)
+                }
+
+                // --- POWER SECTION AT BOTTOM LEFT ---
+                val pwrBox0 = project3D(inX0, inBotY + 4f, 0.6f)
+                val pwrBox1 = project3D(inX1, inBotY + 4f, 0.6f)
+                val pwrBox2 = project3D(inX1, by1 - 8f, 0.6f)
+                val pwrBox3 = project3D(inX0, by1 - 8f, 0.6f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(pwrBox0.x, pwrBox0.y)
+                        lineTo(pwrBox1.x, pwrBox1.y)
+                        lineTo(pwrBox2.x, pwrBox2.y)
+                        lineTo(pwrBox3.x, pwrBox3.y)
+                        close()
+                    },
+                    color = Color.White.copy(alpha = 0.9f),
+                    style = Stroke(1.4f)
+                )
+
+                // POWER ON Toggle Switch & Illuminated Red Pilot Lamp
+                val pwrSwX = inX0 + 16f
+                val pwrLedX = inX0 + 38f
+                val pwrY = (inBotY + 4f + by1 - 8f) / 2f + 4f
+
+                val pwrBase = project3D(pwrSwX, pwrY, 1.8f)
+                val pwrTiltY = if (isTrainerPowerOn) -5.5f else 5.5f
+                val pwrTip = project3D(pwrSwX, pwrY + pwrTiltY, 14f)
+
+                // Power switch metal body
+                drawCircle(color = Color(0xFF546E7A), radius = 6.8f, center = pwrBase)
+                drawCircle(color = Color(0xFFCFD8DC), radius = 5.2f, center = pwrBase)
+                drawLine(color = Color(0xFF263238), start = pwrBase, end = pwrTip, strokeWidth = 3.8f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFFCFD8DC), start = pwrBase, end = pwrTip, strokeWidth = 2.4f, cap = StrokeCap.Round)
+                drawCircle(color = Color(0xFFECEFF1), radius = 3.6f, center = pwrTip)
+
+                // Red Pilot Indicator Lamp
+                val pilotCenter = project3D(pwrLedX, pwrY, 2.8f)
+                val pilotDome = project3D(pwrLedX, pwrY, 6f)
+                drawCircle(color = Color(0xFF37474F), radius = 7f, center = pilotCenter)
+                drawCircle(color = Color(0xFFCFD8DC), radius = 6.2f, center = pilotCenter, style = Stroke(1.2f))
+
+                if (isTrainerPowerOn) {
+                    // Radiant Red Pilot Glow Bloom
+                    drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.28f), radius = 18f, center = pilotDome)
+                    drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.7f), radius = 9f, center = pilotDome)
+                    drawCircle(color = Color(0xFFFF1744), radius = 5f, center = pilotDome)
+                    drawCircle(color = Color(0xFFFFCDD2), radius = 2.2f, center = pilotDome)
+                    drawCircle(color = Color.White, radius = 1f, center = Offset(pilotDome.x - 0.8f, pilotDome.y - 0.8f))
+                } else {
+                    // Dark Unlit Ruby Pilot Lens
+                    drawCircle(color = Color(0xFF52060D), radius = 5f, center = pilotDome)
+                    drawCircle(color = Color.White.copy(alpha = 0.35f), radius = 1.2f, center = Offset(pilotDome.x - 0.8f, pilotDome.y - 0.8f))
+                }
+
+                val pwrLbl = project3D((inX0 + inX1) / 2f, inBotY + 12f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("POWER ON", pwrLbl.x, pwrLbl.y, trainerPinNumPaint)
+
+                // =========================================================================================
+                // RIGHT COLUMN: 8 OUTPUT RED CYLINDRICAL DOME LED DIODES
+                // =========================================================================================
+                val outColW = 54f
+                val outX0 = bx1 - outColW
+                val outX1 = bx1 - 8f
+                val outTopY = by0 + 26f
+                val outBotY = by1 - 10f
+
+                // Right Column Silkscreen Box
+                val outBox0 = project3D(outX0, outTopY, 0.6f)
+                val outBox1 = project3D(outX1, outTopY, 0.6f)
+                val outBox2 = project3D(outX1, outBotY, 0.6f)
+                val outBox3 = project3D(outX0, outBotY, 0.6f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(outBox0.x, outBox0.y)
+                        lineTo(outBox1.x, outBox1.y)
+                        lineTo(outBox2.x, outBox2.y)
+                        lineTo(outBox3.x, outBox3.y)
+                        close()
+                    },
+                    color = Color.White.copy(alpha = 0.9f),
+                    style = Stroke(1.4f)
+                )
+                val outHeaderPos = project3D((outX0 + outX1) / 2f, outTopY + 10f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("OUTPUTS", outHeaderPos.x, outHeaderPos.y, trainerWhiteHeaderPaint)
+
+                // 8 Red Cylindrical Dome LED Diodes + Turret Sockets (1..8)
+                val numOutLeds = 8
+                val ledStepY = (outBotY - (outTopY + 16f)) / numOutLeds
                 val circuitOutputs = currentComponents.filter { it.type == "LED" || it.type == "DIGITAL_PROBE" }
 
-                for (i in 0 until ledCount) {
-                    val lx = ledX0 + i * ledSpacing
-                    val ledY = topY0 + 24f
-                    val sockY = topY0 + 46f
-                    val outLabel = "L${ledCount - i}"
-                    val sockLabel = "OP${ledCount - i}"
+                for (i in 0 until numOutLeds) {
+                    val ledY = outTopY + 20f + i * ledStepY
+                    val ledX = outX1 - 20f
+                    val sockX = outX1 - 40f
+                    val ledNum = "${i + 1}"
 
-                    val mappedOutput = circuitOutputs.getOrNull(i)
-                    val isHigh = when {
-                        mappedOutput != null -> (mappedOutput.inputValues["IN"] ?: mappedOutput.outputValues["OUT"] ?: DigitalState.LOW) == DigitalState.HIGH
-                        else -> false
-                    }
-
-                    // Output LED Diode
-                    val ledCenter = project3D(lx, ledY, 2.5f)
-                    val domeCenter = project3D(lx, ledY, 6.5f)
-                    drawCircle(color = Color(0xFF212529), radius = 5.8f, center = ledCenter)
-                    drawCircle(color = Color(0xFFB0BEC5), radius = 4.8f, center = ledCenter, style = Stroke(1f))
-
-                    if (isHigh) {
-                        // Brilliant glowing red photonic emission bloom
-                        drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.25f), radius = 15f, center = domeCenter)
-                        drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.65f), radius = 8f, center = domeCenter)
-                        drawCircle(color = Color(0xFFFF1744), radius = 4.2f, center = domeCenter)
-                        drawCircle(color = Color(0xFFFFEBEE), radius = 1.8f, center = domeCenter)
-                        drawCircle(color = Color.White, radius = 0.9f, center = Offset(domeCenter.x - 1f, domeCenter.y - 1f))
+                    val mappedOut = circuitOutputs.getOrNull(i)
+                    // The top LED (i == 0) is connected via red patch wire in the photo and is lit bright red!
+                    val isLit = if (i == 0) {
+                        isTrainerPowerOn
                     } else {
-                        // Deep dark unlit ruby
-                        drawCircle(color = Color(0xFF450A12), radius = 4.2f, center = domeCenter)
-                        drawCircle(color = Color.White.copy(alpha = 0.25f), radius = 1.1f, center = Offset(domeCenter.x - 1f, domeCenter.y - 1f))
+                        isTrainerPowerOn && mappedOut != null &&
+                            ((mappedOut.inputValues["IN"] ?: mappedOut.outputValues["OUT"] ?: DigitalState.LOW) == DigitalState.HIGH)
                     }
 
-                    // Terminal Banana Socket OP12..OP1
-                    val sockCenter = project3D(lx, sockY, 1.5f)
-                    drawCircle(color = Color.White, radius = 5f, center = sockCenter, style = Stroke(0.8f))
-                    drawCircle(color = Color(0xFFB0BEC5), radius = 4f, center = sockCenter)
-                    drawCircle(color = Color(0xFF1A1A1A), radius = 2.2f, center = sockCenter)
+                    // Silver Turret Banana Socket for Patch Cord
+                    val sockCenter = project3D(sockX, ledY, 1.6f)
+                    drawCircle(color = Color.White, radius = 4.6f, center = sockCenter, style = Stroke(0.8f))
+                    drawCircle(color = Color(0xFFCFD8DC), radius = 3.6f, center = sockCenter)
+                    drawCircle(color = Color(0xFF1E2124), radius = 1.8f, center = sockCenter)
 
-                    // Text labels
-                    val lblPos = project3D(lx, topY0 + 33f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText(outLabel, lblPos.x, lblPos.y, trainerPinNumPaint)
-                    val sLblPos = project3D(lx, topY0 + 55f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText(sockLabel, sLblPos.x, sLblPos.y, trainerPinNumPaint)
-                }
+                    // Output Index Label 1..8
+                    val numPos = project3D(outX1 - 7f, ledY + 2f, 0.8f)
+                    drawContext.canvas.nativeCanvas.drawText(ledNum, numPos.x, numPos.y, trainerPinNumPaint)
 
-                // --- A2. 7 SEGMENT DISPLAY SECTION (Right) ---
-                val segBoxP0 = project3D(splitX + 6f, topY0, 0.6f)
-                val segBoxP1 = project3D(bx1 - 10f, topY0, 0.6f)
-                val segBoxP2 = project3D(bx1 - 10f, topY1, 0.6f)
-                val segBoxP3 = project3D(splitX + 6f, topY1, 0.6f)
-                drawPath(
-                    path = Path().apply {
-                        moveTo(segBoxP0.x, segBoxP0.y)
-                        lineTo(segBoxP1.x, segBoxP1.y)
-                        lineTo(segBoxP2.x, segBoxP2.y)
-                        lineTo(segBoxP3.x, segBoxP3.y)
-                        close()
-                    },
-                    color = Color.White.copy(alpha = 0.85f),
-                    style = Stroke(1.4f)
-                )
-                val segTitlePos = project3D((splitX + 6f + bx1 - 10f) / 2f, topY0 + 9f, 0.8f)
-                drawContext.canvas.nativeCanvas.drawText("7 SEGMENT DISPLAY SECTION", segTitlePos.x, segTitlePos.y, trainerWhiteHeaderPaint)
+                    // Real 5mm Through-Hole Red Cylindrical Dome LED Diode
+                    val baseCenter = project3D(ledX, ledY, 1.6f)
+                    val flangeCenter = project3D(ledX, ledY, 3.8f)
+                    val barrelCenter = project3D(ledX, ledY, 7.2f)
+                    val domeCenter = project3D(ledX, ledY, 12.5f)
 
-                // Two Dual 7-Segment Modules (Digit 1 and Digit 2)
-                val segWidth = (bx1 - 10f - (splitX + 6f))
-                val d1X = splitX + 6f + segWidth * 0.32f
-                val d2X = splitX + 6f + segWidth * 0.72f
-                val segCenters = listOf(d1X, d2X)
+                    // Base Flange Rim
+                    val flangeColor = if (isLit) Color(0xFFFF1744).copy(alpha = 0.9f) else Color(0xFF5A0812)
+                    drawCircle(color = flangeColor, radius = 6.4f, center = flangeCenter)
+                    drawCircle(color = Color(0xFF263238), radius = 6.6f, center = flangeCenter, style = Stroke(0.8f))
 
-                for ((dIdx, dcX) in segCenters.withIndex()) {
-                    val sP0 = project3D(dcX - 16f, topY0 + 16f, 3f)
-                    val sP1 = project3D(dcX + 16f, topY0 + 16f, 3f)
-                    val sP2 = project3D(dcX + 16f, topY0 + 44f, 3f)
-                    val sP3 = project3D(dcX - 16f, topY0 + 44f, 3f)
+                    // Cylindrical Body
+                    val barrelColor = if (isLit) Color(0xFFFF1744) else Color(0xFF4D050B)
+                    drawCircle(color = barrelColor, radius = 5.6f, center = barrelCenter)
 
-                    // Gray package bezel
-                    drawPath(
-                        path = Path().apply {
-                            moveTo(sP0.x, sP0.y)
-                            lineTo(sP1.x, sP1.y)
-                            lineTo(sP2.x, sP2.y)
-                            lineTo(sP3.x, sP3.y)
-                            close()
-                        },
-                        color = Color(0xFF263238)
-                    )
-                    drawPath(
-                        path = Path().apply {
-                            moveTo(sP0.x, sP0.y)
-                            lineTo(sP1.x, sP1.y)
-                            lineTo(sP2.x, sP2.y)
-                            lineTo(sP3.x, sP3.y)
-                            close()
-                        },
-                        color = Color(0xFF90A4AE),
-                        style = Stroke(1f)
-                    )
-
-                    // 7 Segments (Displaying active digits or test patterns)
-                    val segCenter = project3D(dcX, topY0 + 30f, 4f)
-                    // Lit red segments
-                    drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.2f), radius = 10f, center = segCenter)
-                    // Digits "8" silhouette with lit red LED bars
-                    val segBarColor = if (dIdx == 0) Color(0xFFFF1744) else Color(0xFFFF1744).copy(alpha = 0.85f)
-                    val pTop = project3D(dcX, topY0 + 20f, 4f)
-                    val pMid = project3D(dcX, topY0 + 30f, 4f)
-                    val pBot = project3D(dcX, topY0 + 40f, 4f)
-                    drawLine(color = segBarColor, start = Offset(pTop.x - 7f, pTop.y), end = Offset(pTop.x + 7f, pTop.y), strokeWidth = 2.4f, cap = StrokeCap.Round)
-                    drawLine(color = segBarColor, start = Offset(pMid.x - 6f, pMid.y), end = Offset(pMid.x + 6f, pMid.y), strokeWidth = 2.4f, cap = StrokeCap.Round)
-                    drawLine(color = segBarColor, start = Offset(pBot.x - 7f, pBot.y), end = Offset(pBot.x + 7f, pBot.y), strokeWidth = 2.4f, cap = StrokeCap.Round)
-                    drawLine(color = segBarColor, start = Offset(pTop.x - 7f, pTop.y), end = Offset(pMid.x - 6f, pMid.y), strokeWidth = 2.4f, cap = StrokeCap.Round)
-                    drawLine(color = segBarColor, start = Offset(pTop.x + 7f, pTop.y), end = Offset(pMid.x + 6f, pMid.y), strokeWidth = 2.4f, cap = StrokeCap.Round)
-                    drawLine(color = segBarColor, start = Offset(pMid.x - 6f, pMid.y), end = Offset(pBot.x - 7f, pBot.y), strokeWidth = 2.4f, cap = StrokeCap.Round)
-                    drawLine(color = segBarColor, start = Offset(pMid.x + 6f, pMid.y), end = Offset(pBot.x + 7f, pBot.y), strokeWidth = 2.4f, cap = StrokeCap.Round)
-                    // Decimal point DP
-                    drawCircle(color = segBarColor, radius = 1.6f, center = Offset(pBot.x + 9f, pBot.y))
-
-                    // Breakout terminal sockets below digit (a, b, c, d, e, f, g, dp)
-                    val pins = listOf("a", "b", "c", "d")
-                    for ((pIdx, pName) in pins.withIndex()) {
-                        val px = dcX - 10f + pIdx * 7f
-                        val sCenter = project3D(px, topY0 + 52f, 1.5f)
-                        drawCircle(color = Color.White, radius = 3.2f, center = sCenter, style = Stroke(0.6f))
-                        drawCircle(color = Color(0xFFCFD8DC), radius = 2.4f, center = sCenter)
-                        drawCircle(color = Color(0xFF111111), radius = 1.2f, center = sCenter)
-                        val pLbl = project3D(px, topY0 + 60f, 0.8f)
-                        drawContext.canvas.nativeCanvas.drawText(pName, pLbl.x, pLbl.y, trainerPinNumPaint)
+                    // Hemispherical Convex Dome
+                    if (isLit) {
+                        // Photonic Radiant Bloom Aura (Bright Red Glowing Diode from photo!)
+                        drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.22f), radius = 22f, center = domeCenter)
+                        drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.58f), radius = 12f, center = domeCenter)
+                        drawCircle(color = Color(0xFFFF1744), radius = 6.2f, center = domeCenter)
+                        // Hot incandescent core
+                        drawCircle(color = Color(0xFFFFCDD2), radius = 2.8f, center = domeCenter)
+                        drawCircle(color = Color.White, radius = 1.4f, center = domeCenter)
+                        // Specular gloss arc highlight
+                        drawArc(
+                            color = Color.White.copy(alpha = 0.95f),
+                            startAngle = -135f,
+                            sweepAngle = 90f,
+                            useCenter = false,
+                            topLeft = Offset(domeCenter.x - 4f, domeCenter.y - 4f),
+                            size = androidx.compose.ui.geometry.Size(8f, 8f),
+                            style = Stroke(1.4f, cap = StrokeCap.Round)
+                        )
+                    } else {
+                        // Dark Translucent Ruby Epoxy Body
+                        drawCircle(color = Color(0xFF52060D), radius = 6.2f, center = domeCenter)
+                        // Internal Anvil Silhouette
+                        drawLine(
+                            color = Color(0xFF78909C),
+                            start = Offset(domeCenter.x - 2f, domeCenter.y + 2f),
+                            end = Offset(domeCenter.x + 2f, domeCenter.y - 2f),
+                            strokeWidth = 1.5f
+                        )
+                        drawArc(
+                            color = Color.White.copy(alpha = 0.45f),
+                            startAngle = -135f,
+                            sweepAngle = 80f,
+                            useCenter = false,
+                            topLeft = Offset(domeCenter.x - 4f, domeCenter.y - 4f),
+                            size = androidx.compose.ui.geometry.Size(8f, 8f),
+                            style = Stroke(1.1f, cap = StrokeCap.Round)
+                        )
                     }
                 }
 
                 // =========================================================================================
-                // SECTION B: UPPER POWER DISTRIBUTION RAIL (VCC [+])
+                // CENTER SECTION: 5 LOGIC GATE COLUMNS (AND, OR, NAND, NOR, EX OR) WITH 14-PIN DIP ICs
                 // =========================================================================================
-                val vccRailY = by0 + 82f
-                val vccLineP0 = project3D(bx0 + 14f, vccRailY, 0.5f)
-                val vccLineP1 = project3D(bx1 - 14f, vccRailY, 0.5f)
-                drawLine(color = Color.White.copy(alpha = 0.85f), start = vccLineP0, end = vccLineP1, strokeWidth = 1.4f)
+                val centerAreaX0 = bx0 + 62f
+                val centerAreaX1 = bx1 - 62f
+                val colCount = 5
+                val colWidth = (centerAreaX1 - centerAreaX0) / colCount
+                val gateAreaY0 = by0 + 26f
+                val gateAreaY1 = by1 - 64f
 
-                // 4 VCC Sockets across the bays
-                for (pIdx in 0..3) {
-                    val vx = bx0 + 60f + pIdx * ((bw - 120f) / 3f)
-                    val vccCenter = project3D(vx, vccRailY, 2f)
-                    drawCircle(color = Color(0xFFD32F2F), radius = 6.2f, center = vccCenter) // Red VCC ring
-                    drawCircle(color = Color(0xFFFFCDD2), radius = 4.6f, center = vccCenter, style = Stroke(0.8f))
-                    drawCircle(color = Color(0xFF1A1A1A), radius = 2.4f, center = vccCenter)
-                    val vLbl = project3D(vx - 16f, vccRailY + 3f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText("VCC", vLbl.x, vLbl.y, trainerWhiteSubPaint)
-                    val plusLbl = project3D(vx + 16f, vccRailY + 3f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText("+", plusLbl.x, plusLbl.y, trainerWhiteSubPaint)
-                }
+                val gateColTitles = listOf("AND GATES", "OR GATES", "NAND GATES", "NOR GATES", "EX OR GATES")
+                val gateIcPartNumbers = listOf("7408", "7432", "7400", "7402", "7486")
+                val gateIcMfgLabels = listOf("MM74HC08N", "MM74HC32N", "TC74HC00P", "TC74HC02P", "SN74LS86N")
 
-                // =========================================================================================
-                // SECTION C: 5 IC BAYS (U1, U2, U3, U4, U5) WITH CYAN ZIF SOCKETS
-                // =========================================================================================
-                val bayY0 = by0 + 94f
-                val bayY1 = by1 - 88f
-                val bayCount = 5
-                val bayW = (bw - 20f) / bayCount
-                val logicComps = currentComponents.filter { it.type != "SWITCH" && it.type != "LED" && it.type != "DIGITAL_PROBE" }
+                for (cIdx in 0 until colCount) {
+                    val colX0 = centerAreaX0 + cIdx * colWidth
+                    val colX1 = colX0 + colWidth
+                    val colMidX = (colX0 + colX1) / 2f
 
-                // Default IC part labels for the 5 bays (reflecting real educational trainer apparatus)
-                val defaultPartNames = listOf("7408 (AND)", "7432 (OR)", "7404 (NOT)", "7400 (NAND)", "7486 (XOR)")
-
-                for (bIdx in 0 until bayCount) {
-                    val bayLeft = bx0 + 10f + bIdx * bayW
-                    val bayRight = bayLeft + bayW
-                    val bayCenter = (bayLeft + bayRight) / 2f
-
-                    // White Silkscreen Divider Line between bays
-                    if (bIdx > 0) {
-                        val d0 = project3D(bayLeft, bayY0, 0.5f)
-                        val d1 = project3D(bayLeft, bayY1, 0.5f)
-                        drawLine(color = Color.White.copy(alpha = 0.85f), start = d0, end = d1, strokeWidth = 1.2f)
-                    }
-
-                    // Silkscreen Bay Identifier: U1, U2, U3, U4, U5
-                    val bayLabelPos = project3D(bayCenter, bayY0 + 12f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText("U${bIdx + 1}", bayLabelPos.x, bayLabelPos.y, trainerWhiteHeaderPaint)
-
-                    // 1. Signature Cyan/Teal (Turquoise) 16-Pin ZIF Socket (Zero Insertion Force)
-                    val zifW = bayW * 0.40f
-                    val zifH = (bayY1 - bayY0) * 0.68f
-                    val zifY = (bayY0 + bayY1) / 2f + 4f
-                    val zifElev = 4f
-
-                    val zP0 = project3D(bayCenter - zifW / 2f, zifY - zifH / 2f, zifElev)
-                    val zP1 = project3D(bayCenter + zifW / 2f, zifY - zifH / 2f, zifElev)
-                    val zP2 = project3D(bayCenter + zifW / 2f, zifY + zifH / 2f, zifElev)
-                    val zP3 = project3D(bayCenter - zifW / 2f, zifY + zifH / 2f, zifElev)
-
-                    // ZIF Socket Body in Cyan/Turquoise
+                    // White Silkscreen Column Boundary Box
+                    val cBox0 = project3D(colX0 + 2f, gateAreaY0, 0.6f)
+                    val cBox1 = project3D(colX1 - 2f, gateAreaY0, 0.6f)
+                    val cBox2 = project3D(colX1 - 2f, gateAreaY1, 0.6f)
+                    val cBox3 = project3D(colX0 + 2f, gateAreaY1, 0.6f)
                     drawPath(
                         path = Path().apply {
-                            moveTo(zP0.x, zP0.y)
-                            lineTo(zP1.x, zP1.y)
-                            lineTo(zP2.x, zP2.y)
-                            lineTo(zP3.x, zP3.y)
+                            moveTo(cBox0.x, cBox0.y)
+                            lineTo(cBox1.x, cBox1.y)
+                            lineTo(cBox2.x, cBox2.y)
+                            lineTo(cBox3.x, cBox3.y)
                             close()
                         },
-                        color = Color(0xFF009688) // Real ZIF socket cyan/turquoise
-                    )
-                    drawPath(
-                        path = Path().apply {
-                            moveTo(zP0.x, zP0.y)
-                            lineTo(zP1.x, zP1.y)
-                            lineTo(zP2.x, zP2.y)
-                            lineTo(zP3.x, zP3.y)
-                            close()
-                        },
-                        color = Color(0xFF80CBC4),
+                        color = Color.White.copy(alpha = 0.85f),
                         style = Stroke(1.2f)
                     )
 
-                    // Silver ZIF Locking Lever at Top-Left of the Socket
-                    val leverBase = project3D(bayCenter - zifW / 2f - 2f, zifY - zifH / 2f + 6f, zifElev + 2f)
-                    val leverTip = project3D(bayCenter - zifW / 2f - 9f, zifY - zifH / 2f - 14f, zifElev + 14f)
-                    drawLine(color = Color(0xFFCFD8DC), start = leverBase, end = leverTip, strokeWidth = 3f, cap = StrokeCap.Round)
-                    drawLine(color = Color.White, start = leverBase, end = leverTip, strokeWidth = 1f, cap = StrokeCap.Round)
-                    drawCircle(color = Color(0xFFECEFF1), radius = 3.4f, center = leverTip)
+                    // Column Header Title
+                    val titlePos = project3D(colMidX, gateAreaY0 + 10f, 0.8f)
+                    drawContext.canvas.nativeCanvas.drawText(gateColTitles[cIdx], titlePos.x, titlePos.y, trainerWhiteHeaderPaint)
 
-                    // 16 Dual In-Line Socket Contact Slots (8 on left, 8 on right)
-                    val slotCount = 8
-                    val slotSpacing = zifH / (slotCount + 1)
-                    for (sIdx in 0 until slotCount) {
-                        val sy = zifY - zifH / 2f + (sIdx + 1) * slotSpacing
-                        val slCenter = project3D(bayCenter - zifW * 0.32f, sy, zifElev + 0.5f)
-                        val srCenter = project3D(bayCenter + zifW * 0.32f, sy, zifElev + 0.5f)
-                        drawCircle(color = Color(0xFF004D40), radius = 1.8f, center = slCenter)
-                        drawCircle(color = Color(0xFF004D40), radius = 1.8f, center = srCenter)
+                    // 4 Logic Gates Schematic Symbols per Column (2 above the IC, 2 below the IC)
+                    val numGatesInCol = 4
+                    val gateSpacing = (gateAreaY1 - (gateAreaY0 + 18f)) / numGatesInCol
+
+                    for (gIdx in 0 until numGatesInCol) {
+                        val gy = gateAreaY0 + 24f + gIdx * gateSpacing
+                        val symW = colWidth * 0.36f
+                        val symH = 14f
+
+                        // Inputs A and B Silver Turret Sockets on Left
+                        val inSockA = project3D(colX0 + 7f, gy - 4f, 1.4f)
+                        val inSockB = project3D(colX0 + 7f, gy + 4f, 1.4f)
+                        drawCircle(color = Color.White, radius = 3.6f, center = inSockA, style = Stroke(0.6f))
+                        drawCircle(color = Color(0xFFCFD8DC), radius = 2.8f, center = inSockA)
+                        drawCircle(color = Color(0xFF1E2124), radius = 1.3f, center = inSockA)
+
+                        drawCircle(color = Color.White, radius = 3.6f, center = inSockB, style = Stroke(0.6f))
+                        drawCircle(color = Color(0xFFCFD8DC), radius = 2.8f, center = inSockB)
+                        drawCircle(color = Color(0xFF1E2124), radius = 1.3f, center = inSockB)
+
+                        // Output Y Silver Turret Socket on Right
+                        val outSockY = project3D(colX1 - 7f, gy, 1.4f)
+                        drawCircle(color = Color.White, radius = 3.6f, center = outSockY, style = Stroke(0.6f))
+                        drawCircle(color = Color(0xFFCFD8DC), radius = 2.8f, center = outSockY)
+                        drawCircle(color = Color(0xFF1E2124), radius = 1.3f, center = outSockY)
+
+                        // Schematic Silkscreen Trace Lines into Gate Symbol
+                        val symLeft = colMidX - symW / 2f
+                        val symRight = colMidX + symW / 2f
+                        val traceInA0 = project3D(colX0 + 11f, gy - 4f, 0.6f)
+                        val traceInA1 = project3D(symLeft, gy - 4f, 0.6f)
+                        val traceInB0 = project3D(colX0 + 11f, gy + 4f, 0.6f)
+                        val traceInB1 = project3D(symLeft, gy + 4f, 0.6f)
+                        val traceOut0 = project3D(symRight, gy, 0.6f)
+                        val traceOut1 = project3D(colX1 - 11f, gy, 0.6f)
+
+                        drawLine(color = Color.White.copy(alpha = 0.9f), start = traceInA0, end = traceInA1, strokeWidth = 1f)
+                        drawLine(color = Color.White.copy(alpha = 0.9f), start = traceInB0, end = traceInB1, strokeWidth = 1f)
+                        drawLine(color = Color.White.copy(alpha = 0.9f), start = traceOut0, end = traceOut1, strokeWidth = 1f)
+
+                        // Draw Gate Schematic Symbol based on gate type
+                        val pTopL = project3D(symLeft, gy - symH / 2f, 0.6f)
+                        val pBotL = project3D(symLeft, gy + symH / 2f, 0.6f)
+                        val pTip = project3D(symRight - if (cIdx == 2 || cIdx == 3) 4f else 0f, gy, 0.6f)
+
+                        when (cIdx) {
+                            0 -> {
+                                // AND Gate (Flat back, curved nose)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pTopL, end = pBotL, strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pTopL, end = project3D(symLeft + symW * 0.4f, gy - symH / 2f, 0.6f), strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pBotL, end = project3D(symLeft + symW * 0.4f, gy + symH / 2f, 0.6f), strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = project3D(symLeft + symW * 0.4f, gy - symH / 2f, 0.6f), end = pTip, strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = project3D(symLeft + symW * 0.4f, gy + symH / 2f, 0.6f), end = pTip, strokeWidth = 1.4f)
+                            }
+                            1 -> {
+                                // OR Gate (Curved back, curved pointed tip)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pTopL, end = pTip, strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pBotL, end = pTip, strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pTopL, end = project3D(symLeft + 3f, gy, 0.6f), strokeWidth = 1.2f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pBotL, end = project3D(symLeft + 3f, gy, 0.6f), strokeWidth = 1.2f)
+                            }
+                            2 -> {
+                                // NAND Gate (AND shape + Inversion Bubble)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pTopL, end = pBotL, strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pTopL, end = pTip, strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pBotL, end = pTip, strokeWidth = 1.4f)
+                                val bubbleCenter = project3D(symRight - 2f, gy, 0.6f)
+                                drawCircle(color = Color.White, radius = 2.4f, center = bubbleCenter, style = Stroke(1.2f))
+                            }
+                            3 -> {
+                                // NOR Gate (OR shape + Inversion Bubble)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pTopL, end = pTip, strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pBotL, end = pTip, strokeWidth = 1.4f)
+                                val bubbleCenter = project3D(symRight - 2f, gy, 0.6f)
+                                drawCircle(color = Color.White, radius = 2.4f, center = bubbleCenter, style = Stroke(1.2f))
+                            }
+                            4 -> {
+                                // EX OR Gate (XOR dual curved input line + OR body)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pTopL, end = pTip, strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pBotL, end = pTip, strokeWidth = 1.4f)
+                                val pXorL1 = project3D(symLeft - 3.5f, gy - symH / 2f, 0.6f)
+                                val pXorL2 = project3D(symLeft - 3.5f, gy + symH / 2f, 0.6f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pXorL1, end = project3D(symLeft - 1f, gy, 0.6f), strokeWidth = 1.4f)
+                                drawLine(color = Color.White.copy(alpha = 0.95f), start = pXorL2, end = project3D(symLeft - 1f, gy, 0.6f), strokeWidth = 1.4f)
+                            }
+                        }
                     }
 
-                    // 2. Seated DIP IC Chip inside the ZIF Socket
-                    val icW = zifW * 0.72f
-                    val icH = zifH * 0.88f
-                    val icElev = zifElev + 7f
-                    val icP0 = project3D(bayCenter - icW / 2f, zifY - icH / 2f, icElev)
-                    val icP1 = project3D(bayCenter + icW / 2f, zifY - icH / 2f, icElev)
-                    val icP2 = project3D(bayCenter + icW / 2f, zifY + icH / 2f, icElev)
-                    val icP3 = project3D(bayCenter - icW / 2f, zifY + icH / 2f, icElev)
+                    // Authentic 14-Pin Dual In-Line Package (DIP) IC Seated in Center of Each Gate Column
+                    val icCenterY = (gateAreaY0 + gateAreaY1) / 2f
+                    val icW = colWidth * 0.38f
+                    val icH = 34f
+                    val icElev = 5.5f
 
-                    // DIP Molded Black Body
+                    // IC Drop Shadow
+                    val icS0 = project3D(colMidX - icW / 2f, icCenterY - icH / 2f, 0.5f)
+                    val icS1 = project3D(colMidX + icW / 2f, icCenterY - icH / 2f, 0.5f)
+                    val icS2 = project3D(colMidX + icW / 2f, icCenterY + icH / 2f, 0.5f)
+                    val icS3 = project3D(colMidX - icW / 2f, icCenterY + icH / 2f, 0.5f)
+                    drawPath(
+                        path = Path().apply {
+                            moveTo(icS0.x, icS0.y + 2f)
+                            lineTo(icS1.x, icS1.y + 2f)
+                            lineTo(icS2.x, icS2.y + 2f)
+                            lineTo(icS3.x, icS3.y + 2f)
+                            close()
+                        },
+                        color = Color.Black.copy(alpha = 0.45f)
+                    )
+
+                    // 14 Chrome Metallic DIP Pins (7 on Left, 7 on Right)
+                    for (p in 0..6) {
+                        val frac = (p + 0.5f) / 7f
+                        val py = (icCenterY - icH / 2f) + frac * icH
+                        val pinL_Top = project3D(colMidX - icW / 2f, py, icElev * 0.65f)
+                        val pinL_Bot = project3D(colMidX - icW / 2f - 3.5f, py, 0.5f)
+                        drawLine(color = Color(0xFFCFD8DC), start = pinL_Top, end = pinL_Bot, strokeWidth = 1.8f)
+
+                        val pinR_Top = project3D(colMidX + icW / 2f, py, icElev * 0.65f)
+                        val pinR_Bot = project3D(colMidX + icW / 2f + 3.5f, py, 0.5f)
+                        drawLine(color = Color(0xFFCFD8DC), start = pinR_Top, end = pinR_Bot, strokeWidth = 1.8f)
+                    }
+
+                    // IC Body (Matte Black Epoxy Package)
+                    val icP0 = project3D(colMidX - icW / 2f, icCenterY - icH / 2f, icElev)
+                    val icP1 = project3D(colMidX + icW / 2f, icCenterY - icH / 2f, icElev)
+                    val icP2 = project3D(colMidX + icW / 2f, icCenterY + icH / 2f, icElev)
+                    val icP3 = project3D(colMidX - icW / 2f, icCenterY + icH / 2f, icElev)
+
                     drawPath(
                         path = Path().apply {
                             moveTo(icP0.x, icP0.y)
@@ -1129,283 +1245,205 @@ fun Circuit3DCanvas(
                             lineTo(icP3.x, icP3.y)
                             close()
                         },
-                        color = Color(0xFF37474F),
-                        style = Stroke(1f)
+                        color = Color(0xFF455A64),
+                        style = Stroke(0.8f)
                     )
 
                     // Pin 1 Index Notch at Top of Chip
-                    val notchCenter = project3D(bayCenter, zifY - icH / 2f, icElev)
-                    drawCircle(color = Color(0xFF111111), radius = 3f, center = notchCenter)
+                    val notchCenter = project3D(colMidX, icCenterY - icH / 2f, icElev)
+                    drawCircle(color = Color(0xFF111111), radius = 2.2f, center = notchCenter)
 
-                    // Laser-etched Part Markings on the IC
-                    val mappedLogic = logicComps.getOrNull(bIdx)
-                    val chipPartText = mappedLogic?.label?.ifBlank { null } ?: mappedLogic?.type?.let { "$it GATE" } ?: defaultPartNames[bIdx]
-                    val textCenter = project3D(bayCenter, zifY, icElev + 1f)
-                    drawContext.canvas.nativeCanvas.drawText(chipPartText, textCenter.x, textCenter.y + 2f, trainerChipPaint)
+                    // Laser-etched Part Number markings on IC (e.g., 7408, 7432...)
+                    val icTextPos = project3D(colMidX, icCenterY + 2f, icElev + 0.5f)
+                    drawContext.canvas.nativeCanvas.drawText(gateIcPartNumbers[cIdx], icTextPos.x, icTextPos.y, trainerChipPaint)
 
-                    // 3. Pin Breakout Terminal Sockets (Pins 1..8 on Left, Pins 16..9 on Right)
-                    val pinLeftX = bayCenter - zifW / 2f - 14f
-                    val pinRightX = bayCenter + zifW / 2f + 14f
-
-                    for (pIdx in 0 until slotCount) {
-                        val py = zifY - zifH / 2f + (pIdx + 1) * slotSpacing
-                        val pinNumLeft = "${pIdx + 1}"
-                        val pinNumRight = "${16 - pIdx}"
-
-                        // Left Pin Socket
-                        val sockL = project3D(pinLeftX, py, 1.5f)
-                        drawCircle(color = Color.White, radius = 4f, center = sockL, style = Stroke(0.8f))
-                        drawCircle(color = Color(0xFFCFD8DC), radius = 3f, center = sockL)
-                        drawCircle(color = Color(0xFF111111), radius = 1.6f, center = sockL)
-                        val numPosL = project3D(pinLeftX - 7f, py + 2f, 0.8f)
-                        drawContext.canvas.nativeCanvas.drawText(pinNumLeft, numPosL.x, numPosL.y, trainerPinNumPaint)
-
-                        // Right Pin Socket
-                        val sockR = project3D(pinRightX, py, 1.5f)
-                        drawCircle(color = Color.White, radius = 4f, center = sockR, style = Stroke(0.8f))
-                        drawCircle(color = Color(0xFFCFD8DC), radius = 3f, center = sockR)
-                        drawCircle(color = Color(0xFF111111), radius = 1.6f, center = sockR)
-                        val numPosR = project3D(pinRightX + 7f, py + 2f, 0.8f)
-                        drawContext.canvas.nativeCanvas.drawText(pinNumRight, numPosR.x, numPosR.y, trainerPinNumPaint)
-                    }
+                    val icSubTextPos = project3D(colMidX, icCenterY + 11f, icElev + 0.5f)
+                    drawContext.canvas.nativeCanvas.drawText(gateIcMfgLabels[cIdx].take(7), icSubTextPos.x, icSubTextPos.y, trainerPinNumPaint)
                 }
 
                 // =========================================================================================
-                // SECTION D: LOWER POWER DISTRIBUTION RAIL (GND [-])
+                // BOTTOM ROW: NOT GATES (7404), 4-INPUT AND GATES (7420), AND SPARE 16-PIN SOCKET
                 // =========================================================================================
-                val gndRailY = by1 - 80f
-                val gndLineP0 = project3D(bx0 + 14f, gndRailY, 0.5f)
-                val gndLineP1 = project3D(bx1 - 14f, gndRailY, 0.5f)
-                drawLine(color = Color.White.copy(alpha = 0.85f), start = gndLineP0, end = gndLineP1, strokeWidth = 1.4f)
+                val botRowY0 = by1 - 60f
+                val botRowY1 = by1 - 14f
 
-                // 4 GND Sockets across the bays
-                for (pIdx in 0..3) {
-                    val gx = bx0 + 60f + pIdx * ((bw - 120f) / 3f)
-                    val gndCenter = project3D(gx, gndRailY, 2f)
-                    drawCircle(color = Color(0xFF212121), radius = 6.2f, center = gndCenter) // Black GND ring
-                    drawCircle(color = Color(0xFF757575), radius = 4.6f, center = gndCenter, style = Stroke(0.8f))
-                    drawCircle(color = Color(0xFFCFD8DC), radius = 2.4f, center = gndCenter)
-                    val gLbl = project3D(gx - 16f, gndRailY + 3f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText("GND", gLbl.x, gLbl.y, trainerWhiteSubPaint)
-                    val minusLbl = project3D(gx + 16f, gndRailY + 3f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText("-", minusLbl.x, minusLbl.y, trainerWhiteSubPaint)
+                // --- 1. NOT GATES (Hex Inverter with 7404 IC) on Left of bottom row ---
+                val notX0 = centerAreaX0 + 2f
+                val notX1 = centerAreaX0 + (centerAreaX1 - centerAreaX0) * 0.40f
+                val notMidX = (notX0 + notX1) / 2f
+
+                val notBox0 = project3D(notX0, botRowY0, 0.6f)
+                val notBox1 = project3D(notX1, botRowY0, 0.6f)
+                val notBox2 = project3D(notX1, botRowY1, 0.6f)
+                val notBox3 = project3D(notX0, botRowY1, 0.6f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(notBox0.x, notBox0.y)
+                        lineTo(notBox1.x, notBox1.y)
+                        lineTo(notBox2.x, notBox2.y)
+                        lineTo(notBox3.x, notBox3.y)
+                        close()
+                    },
+                    color = Color.White.copy(alpha = 0.85f),
+                    style = Stroke(1.2f)
+                )
+                val notTitlePos = project3D(notMidX, botRowY0 + 9f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("NOT GATES", notTitlePos.x, notTitlePos.y, trainerWhiteHeaderPaint)
+
+                // 7404 IC in NOT GATES section
+                val notIcP0 = project3D(notMidX - 16f, botRowY0 + 16f, 4.5f)
+                val notIcP1 = project3D(notMidX + 16f, botRowY0 + 16f, 4.5f)
+                val notIcP2 = project3D(notMidX + 16f, botRowY1 - 8f, 4.5f)
+                val notIcP3 = project3D(notMidX - 16f, botRowY1 - 8f, 4.5f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(notIcP0.x, notIcP0.y)
+                        lineTo(notIcP1.x, notIcP1.y)
+                        lineTo(notIcP2.x, notIcP2.y)
+                        lineTo(notIcP3.x, notIcP3.y)
+                        close()
+                    },
+                    color = Color(0xFF1E2124)
+                )
+                val notIcText = project3D(notMidX, (botRowY0 + 16f + botRowY1 - 8f) / 2f + 2f, 5f)
+                drawContext.canvas.nativeCanvas.drawText("7404", notIcText.x, notIcText.y, trainerChipPaint)
+
+                // NOT Gate Sockets
+                val notSockIn = project3D(notX0 + 8f, (botRowY0 + botRowY1) / 2f, 1.4f)
+                val notSockOut = project3D(notX1 - 8f, (botRowY0 + botRowY1) / 2f, 1.4f)
+                drawCircle(color = Color.White, radius = 3.6f, center = notSockIn, style = Stroke(0.6f))
+                drawCircle(color = Color(0xFFCFD8DC), radius = 2.8f, center = notSockIn)
+                drawCircle(color = Color.White, radius = 3.6f, center = notSockOut, style = Stroke(0.6f))
+                drawCircle(color = Color(0xFFCFD8DC), radius = 2.8f, center = notSockOut)
+
+                // --- 2. 4 INPUT AND GATES (with 7420 IC) in Center of bottom row ---
+                val and4X0 = notX1 + 4f
+                val and4X1 = centerAreaX0 + (centerAreaX1 - centerAreaX0) * 0.74f
+                val and4MidX = (and4X0 + and4X1) / 2f
+
+                val and4Box0 = project3D(and4X0, botRowY0, 0.6f)
+                val and4Box1 = project3D(and4X1, botRowY0, 0.6f)
+                val and4Box2 = project3D(and4X1, botRowY1, 0.6f)
+                val and4Box3 = project3D(and4X0, botRowY1, 0.6f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(and4Box0.x, and4Box0.y)
+                        lineTo(and4Box1.x, and4Box1.y)
+                        lineTo(and4Box2.x, and4Box2.y)
+                        lineTo(and4Box3.x, and4Box3.y)
+                        close()
+                    },
+                    color = Color.White.copy(alpha = 0.85f),
+                    style = Stroke(1.2f)
+                )
+                val and4TitlePos = project3D(and4MidX, botRowY0 + 9f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("4 INPUT AND GATES", and4TitlePos.x, and4TitlePos.y, trainerWhiteHeaderPaint)
+
+                // 7420 IC in 4-INPUT AND section
+                val and4IcP0 = project3D(and4MidX - 16f, botRowY0 + 16f, 4.5f)
+                val and4IcP1 = project3D(and4MidX + 16f, botRowY0 + 16f, 4.5f)
+                val and4IcP2 = project3D(and4MidX + 16f, botRowY1 - 8f, 4.5f)
+                val and4IcP3 = project3D(and4MidX - 16f, botRowY1 - 8f, 4.5f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(and4IcP0.x, and4IcP0.y)
+                        lineTo(and4IcP1.x, and4IcP1.y)
+                        lineTo(and4IcP2.x, and4IcP2.y)
+                        lineTo(and4IcP3.x, and4IcP3.y)
+                        close()
+                    },
+                    color = Color(0xFF1E2124)
+                )
+                val and4IcText = project3D(and4MidX, (botRowY0 + 16f + botRowY1 - 8f) / 2f + 2f, 5f)
+                drawContext.canvas.nativeCanvas.drawText("7420", and4IcText.x, and4IcText.y, trainerChipPaint)
+
+                // --- 3. SPARE 16-PIN IC SOCKET on Right of bottom row ---
+                val spareX0 = and4X1 + 4f
+                val spareX1 = centerAreaX1 - 2f
+                val spareMidX = (spareX0 + spareX1) / 2f
+
+                val spBox0 = project3D(spareX0, botRowY0, 0.6f)
+                val spBox1 = project3D(spareX1, botRowY0, 0.6f)
+                val spBox2 = project3D(spareX1, botRowY1, 0.6f)
+                val spBox3 = project3D(spareX0, botRowY1, 0.6f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(spBox0.x, spBox0.y)
+                        lineTo(spBox1.x, spBox1.y)
+                        lineTo(spBox2.x, spBox2.y)
+                        lineTo(spBox3.x, spBox3.y)
+                        close()
+                    },
+                    color = Color.White.copy(alpha = 0.85f),
+                    style = Stroke(1.2f)
+                )
+                val spTitlePos = project3D(spareMidX, botRowY0 + 9f, 0.8f)
+                drawContext.canvas.nativeCanvas.drawText("SPARE SOCKET", spTitlePos.x, spTitlePos.y, trainerWhiteHeaderPaint)
+
+                // 16-Pin DIP Socket Receptacles (8 on top row, 8 on bottom row)
+                for (sIdx in 0 until 8) {
+                    val sx = spareX0 + 8f + sIdx * ((spareX1 - spareX0 - 16f) / 7f)
+                    val sTop = project3D(sx, botRowY0 + 18f, 2f)
+                    val sBot = project3D(sx, botRowY1 - 10f, 2f)
+                    drawCircle(color = Color(0xFFCFD8DC), radius = 2.2f, center = sTop)
+                    drawCircle(color = Color(0xFF111111), radius = 1.1f, center = sTop)
+                    drawCircle(color = Color(0xFFCFD8DC), radius = 2.2f, center = sBot)
+                    drawCircle(color = Color(0xFF111111), radius = 1.1f, center = sBot)
                 }
 
                 // =========================================================================================
-                // SECTION E: BOTTOM ROW (INPUT SECTION, CLOCK SECTION, LOGIC PROBE, PULSER)
+                // REALISTIC 3D PATCH JUMPER WIRES (CONNECTING SWITCHES, GATES & TOP RED GLOWING LED)
                 // =========================================================================================
-                val botY0 = by1 - 70f
-                val botY1 = by1 - 12f
+                // Wire 1: Black patch wire from Input Switch 1 Turret Socket to Gate 1 (AND) Input A
+                val w1Start = project3D(inX0 + 40f, inTopY + 20f, 3.5f)
+                val w1End = project3D(centerAreaX0 + 7f, gateAreaY0 + 20f, 3.5f)
+                val w1Mid = project3D((inX0 + 40f + centerAreaX0 + 7f) / 2f, inTopY + 14f, 18f)
 
-                // --- E1. INPUT SECTION (Left 58% width) ---
-                val inputX0 = bx0 + 10f
-                val inputX1 = bx0 + bw * 0.58f
-                val inBoxP0 = project3D(inputX0, botY0, 0.6f)
-                val inBoxP1 = project3D(inputX1, botY0, 0.6f)
-                val inBoxP2 = project3D(inputX1, botY1, 0.6f)
-                val inBoxP3 = project3D(inputX0, botY1, 0.6f)
-                drawPath(
-                    path = Path().apply {
-                        moveTo(inBoxP0.x, inBoxP0.y)
-                        lineTo(inBoxP1.x, inBoxP1.y)
-                        lineTo(inBoxP2.x, inBoxP2.y)
-                        lineTo(inBoxP3.x, inBoxP3.y)
-                        close()
-                    },
-                    color = Color.White.copy(alpha = 0.85f),
-                    style = Stroke(1.4f)
-                )
-                val inTitlePos = project3D((inputX0 + inputX1) / 2f, botY1 - 4f, 0.8f)
-                drawContext.canvas.nativeCanvas.drawText("INPUT SECTION", inTitlePos.x, inTitlePos.y, trainerWhiteHeaderPaint)
+                // Wire 1 Drop Shadow
+                drawLine(color = Color.Black.copy(alpha = 0.35f), start = Offset(w1Start.x, w1Start.y + 4f), end = Offset(w1End.x, w1End.y + 4f), strokeWidth = 3f, cap = StrokeCap.Round)
+                // Wire 1 Black Insulated Flexible Cable
+                drawLine(color = Color(0xFF1E2124), start = w1Start, end = w1Mid, strokeWidth = 3.8f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFF1E2124), start = w1Mid, end = w1End, strokeWidth = 3.8f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFF546E7A), start = w1Start, end = w1Mid, strokeWidth = 1.2f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFF546E7A), start = w1Mid, end = w1End, strokeWidth = 1.2f, cap = StrokeCap.Round)
+                // Silver Banana Plug Ends
+                drawCircle(color = Color(0xFFECEFF1), radius = 3.5f, center = w1Start)
+                drawCircle(color = Color(0xFFECEFF1), radius = 3.5f, center = w1End)
 
-                // 12 Input Metal Toggle Switches with Red Bat Caps + Sockets (S12..S1, IP12..IP1)
-                val swCount = 12
-                val swSpacing = (inputX1 - inputX0) / (swCount + 1)
-                val swY = by1 - 32f
-                val swSockY = botY0 + 14f
-                val circuitSwitches = currentComponents.filter { it.type == "SWITCH" }
+                // Wire 2: Black patch wire from Input Switch 2 Turret Socket to Gate 1 (AND) Input B
+                val w2Start = project3D(inX0 + 40f, inTopY + 20f + swStepY, 3.5f)
+                val w2End = project3D(centerAreaX0 + 7f, gateAreaY0 + 28f, 3.5f)
+                val w2Mid = project3D((inX0 + 40f + centerAreaX0 + 7f) / 2f, inTopY + 28f, 16f)
 
-                for (i in 0 until swCount) {
-                    val sx = inputX0 + (i + 1) * swSpacing
-                    val swLabel = "S${swCount - i}"
-                    val sockLabel = "IP${swCount - i}"
+                drawLine(color = Color.Black.copy(alpha = 0.35f), start = Offset(w2Start.x, w2Start.y + 4f), end = Offset(w2End.x, w2End.y + 4f), strokeWidth = 3f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFF1E2124), start = w2Start, end = w2Mid, strokeWidth = 3.8f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFF1E2124), start = w2Mid, end = w2End, strokeWidth = 3.8f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFF546E7A), start = w2Start, end = w2Mid, strokeWidth = 1.2f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFF546E7A), start = w2Mid, end = w2End, strokeWidth = 1.2f, cap = StrokeCap.Round)
+                drawCircle(color = Color(0xFFECEFF1), radius = 3.5f, center = w2Start)
+                drawCircle(color = Color(0xFFECEFF1), radius = 3.5f, center = w2End)
 
-                    val mappedSw = circuitSwitches.getOrNull(i)
-                    val isSwOn = trainerSwitchLocalStates[i] ?: (mappedSw?.switchState ?: false)
+                // Wire 3: Signature RED patch wire from Gate 1 Output to Top Output Red LED Turret Socket (L1)
+                // (Matches the exact patch setup from the user's reference photograph!)
+                val w3Start = project3D(centerAreaX0 + colWidth - 7f, gateAreaY0 + 24f, 3.5f)
+                val w3End = project3D(outX1 - 40f, outTopY + 20f, 3.5f)
+                val w3Mid = project3D((centerAreaX0 + colWidth + outX1 - 40f) / 2f, gateAreaY0 + 12f, 24f)
 
-                    // Input Terminal Banana Socket IP12..IP1
-                    val sockCenter = project3D(sx, swSockY, 1.5f)
-                    drawCircle(color = Color.White, radius = 4.4f, center = sockCenter, style = Stroke(0.8f))
-                    drawCircle(color = Color(0xFFCFD8DC), radius = 3.4f, center = sockCenter)
-                    drawCircle(color = Color(0xFF111111), radius = 1.8f, center = sockCenter)
-                    val sLblPos = project3D(sx, swSockY - 6f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText(sockLabel, sLblPos.x, sLblPos.y, trainerPinNumPaint)
+                // Wire 3 Drop Shadow
+                drawLine(color = Color.Black.copy(alpha = 0.35f), start = Offset(w3Start.x, w3Start.y + 5f), end = Offset(w3End.x, w3End.y + 5f), strokeWidth = 3.2f, cap = StrokeCap.Round)
+                // Wire 3 Vivid Red Insulated Flexible Jumper Cable
+                drawLine(color = Color(0xFFB71C1C), start = w3Start, end = w3Mid, strokeWidth = 4.2f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFFB71C1C), start = w3Mid, end = w3End, strokeWidth = 4.2f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFFFF1744), start = w3Start, end = w3Mid, strokeWidth = 2.4f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFFFF1744), start = w3Mid, end = w3End, strokeWidth = 2.4f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFFFFCDD2).copy(alpha = 0.85f), start = w3Start, end = w3Mid, strokeWidth = 1f, cap = StrokeCap.Round)
+                drawLine(color = Color(0xFFFFCDD2).copy(alpha = 0.85f), start = w3Mid, end = w3End, strokeWidth = 1f, cap = StrokeCap.Round)
 
-                    // Metal Lever Toggle Switch with Chrome Collar and RED Vinyl Cap
-                    val swBase = project3D(sx, swY, 2f)
-                    val tiltY = if (isSwOn) -7.5f else 7.5f // Up is ON, Down is OFF
-                    val leverTip = project3D(sx, swY + tiltY, 16f)
-
-                    // Threaded Hex Nut & Collar
-                    drawCircle(color = Color(0xFF78909C), radius = 7.2f, center = swBase)
-                    drawCircle(color = Color(0xFFCFD8DC), radius = 5.2f, center = swBase)
-                    drawCircle(color = Color(0xFF263238), radius = 3.6f, center = swBase)
-
-                    // Solid Metal Lever Arm
-                    drawLine(color = Color(0xFF263238), start = swBase, end = leverTip, strokeWidth = 3.6f, cap = StrokeCap.Round)
-                    drawLine(color = Color(0xFFECEFF1), start = swBase, end = leverTip, strokeWidth = 2.4f, cap = StrokeCap.Round)
-
-                    // Signature RED Vinyl Bat Tip Cap (Exactly matching the user's reference photo!)
-                    drawCircle(color = Color(0xFFB71C1C), radius = 4.8f, center = leverTip)
-                    drawCircle(color = Color(0xFFE53935), radius = 3.8f, center = leverTip)
-                    drawCircle(color = Color(0xFFFF8A80), radius = 1.5f, center = Offset(leverTip.x - 1f, leverTip.y - 1f))
-
-                    // Active Green Glow Status Ring around switch when ON
-                    if (isSwOn) {
-                        drawCircle(color = Color(0xFF00E676).copy(alpha = 0.6f), radius = 6.2f, center = swBase, style = Stroke(1.4f))
-                    }
-
-                    // Silkscreen Label S12..S1
-                    val swLblPos = project3D(sx, swY + 11f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText(swLabel, swLblPos.x, swLblPos.y, trainerPinNumPaint)
-                }
-
-                // --- E2. CLOCK SECTION (60% to 75% width) ---
-                val clkX0 = bx0 + bw * 0.60f
-                val clkX1 = bx0 + bw * 0.74f
-                val clkBoxP0 = project3D(clkX0, botY0, 0.6f)
-                val clkBoxP1 = project3D(clkX1, botY0, 0.6f)
-                val clkBoxP2 = project3D(clkX1, botY1, 0.6f)
-                val clkBoxP3 = project3D(clkX0, botY1, 0.6f)
-                drawPath(
-                    path = Path().apply {
-                        moveTo(clkBoxP0.x, clkBoxP0.y)
-                        lineTo(clkBoxP1.x, clkBoxP1.y)
-                        lineTo(clkBoxP2.x, clkBoxP2.y)
-                        lineTo(clkBoxP3.x, clkBoxP3.y)
-                        close()
-                    },
-                    color = Color.White.copy(alpha = 0.85f),
-                    style = Stroke(1.4f)
-                )
-                val clkTitlePos = project3D((clkX0 + clkX1) / 2f, botY1 - 4f, 0.8f)
-                drawContext.canvas.nativeCanvas.drawText("CLOCK SECTION", clkTitlePos.x, clkTitlePos.y, trainerWhiteHeaderPaint)
-
-                // 6 Frequency Sockets (0.1Hz, 1Hz, 10Hz, 100Hz, 200Hz, 500Hz) + Blinking Clock LED
-                val clkFreqs = listOf("0.1Hz", "1Hz", "10Hz", "100Hz", "200Hz", "500Hz")
-                val freqCols = 3
-                val colSpacing = (clkX1 - clkX0) / (freqCols + 1)
-                for (fIdx in 0 until 6) {
-                    val col = fIdx % 3
-                    val row = fIdx / 3
-                    val fx = clkX0 + (col + 1) * colSpacing
-                    val fy = botY0 + 16f + row * 18f
-
-                    val sCenter = project3D(fx, fy, 1.5f)
-                    drawCircle(color = Color.White, radius = 3.6f, center = sCenter, style = Stroke(0.8f))
-                    drawCircle(color = Color(0xFFCFD8DC), radius = 2.6f, center = sCenter)
-                    drawCircle(color = Color(0xFF111111), radius = 1.4f, center = sCenter)
-
-                    val fLbl = project3D(fx, fy - 5f, 0.8f)
-                    drawContext.canvas.nativeCanvas.drawText(clkFreqs[fIdx], fLbl.x, fLbl.y, trainerPinNumPaint)
-                }
-
-                // Blinking Clock Diode at center
-                val clkLedCenter = project3D((clkX0 + clkX1) / 2f, botY1 - 14f, 3f)
-                drawCircle(color = Color(0xFFFFB300).copy(alpha = 0.4f), radius = 8f, center = clkLedCenter)
-                drawCircle(color = Color(0xFFFFC107), radius = 3.5f, center = clkLedCenter)
-                drawCircle(color = Color.White, radius = 1.2f, center = clkLedCenter)
-
-                // --- E3. LOGIC PROBE SECTION (75% to 85% width) ---
-                val probeX0 = bx0 + bw * 0.755f
-                val probeX1 = bx0 + bw * 0.855f
-                val pbBoxP0 = project3D(probeX0, botY0, 0.6f)
-                val pbBoxP1 = project3D(probeX1, botY0, 0.6f)
-                val pbBoxP2 = project3D(probeX1, botY1, 0.6f)
-                val pbBoxP3 = project3D(probeX0, botY1, 0.6f)
-                drawPath(
-                    path = Path().apply {
-                        moveTo(pbBoxP0.x, pbBoxP0.y)
-                        lineTo(pbBoxP1.x, pbBoxP1.y)
-                        lineTo(pbBoxP2.x, pbBoxP2.y)
-                        lineTo(pbBoxP3.x, pbBoxP3.y)
-                        close()
-                    },
-                    color = Color.White.copy(alpha = 0.85f),
-                    style = Stroke(1.4f)
-                )
-                val probeTitlePos = project3D((probeX0 + probeX1) / 2f, botY1 - 4f, 0.8f)
-                drawContext.canvas.nativeCanvas.drawText("LOGIC PROBE", probeTitlePos.x, probeTitlePos.y, trainerWhiteHeaderPaint)
-
-                // Dual High (H) / Low (L) LEDs and Input Socket
-                val probeMidX = (probeX0 + probeX1) / 2f
-                val ledHCenter = project3D(probeMidX - 9f, botY0 + 20f, 3f)
-                val ledLCenter = project3D(probeMidX + 9f, botY0 + 20f, 3f)
-                // Red H LED
-                drawCircle(color = Color(0xFFFF1744), radius = 3.6f, center = ledHCenter)
-                drawCircle(color = Color.White, radius = 1f, center = ledHCenter)
-                val hLbl = project3D(probeMidX - 9f, botY0 + 30f, 0.8f)
-                drawContext.canvas.nativeCanvas.drawText("H", hLbl.x, hLbl.y, trainerPinNumPaint)
-
-                // Green L LED
-                drawCircle(color = Color(0xFF00E676), radius = 3.6f, center = ledLCenter)
-                drawCircle(color = Color.White, radius = 1f, center = ledLCenter)
-                val lLbl = project3D(probeMidX + 9f, botY0 + 30f, 0.8f)
-                drawContext.canvas.nativeCanvas.drawText("L", lLbl.x, lLbl.y, trainerPinNumPaint)
-
-                // Probe Socket
-                val pbSockCenter = project3D(probeMidX, botY0 + 42f, 1.5f)
-                drawCircle(color = Color.White, radius = 4.4f, center = pbSockCenter, style = Stroke(0.8f))
-                drawCircle(color = Color(0xFFCFD8DC), radius = 3.2f, center = pbSockCenter)
-                drawCircle(color = Color(0xFF111111), radius = 1.8f, center = pbSockCenter)
-
-                // --- E4. PULSER SECTION (87% to 98% width) ---
-                val pulserX0 = bx0 + bw * 0.87f
-                val pulserX1 = bx1 - 10f
-                val pulBoxP0 = project3D(pulserX0, botY0, 0.6f)
-                val pulBoxP1 = project3D(pulserX1, botY0, 0.6f)
-                val pulBoxP2 = project3D(pulserX1, botY1, 0.6f)
-                val pulBoxP3 = project3D(pulserX0, botY1, 0.6f)
-                drawPath(
-                    path = Path().apply {
-                        moveTo(pulBoxP0.x, pulBoxP0.y)
-                        lineTo(pulBoxP1.x, pulBoxP1.y)
-                        lineTo(pulBoxP2.x, pulBoxP2.y)
-                        lineTo(pulBoxP3.x, pulBoxP3.y)
-                        close()
-                    },
-                    color = Color.White.copy(alpha = 0.85f),
-                    style = Stroke(1.4f)
-                )
-                val pulserTitlePos = project3D((pulserX0 + pulserX1) / 2f, botY1 - 4f, 0.8f)
-                drawContext.canvas.nativeCanvas.drawText("PULSER", pulserTitlePos.x, pulserTitlePos.y, trainerWhiteHeaderPaint)
-
-                // Big Round Tactile RED Pushbutton with Chrome Collar
-                val pulserMidX = (pulserX0 + pulserX1) / 2f
-                val pulserY = botY0 + 32f
-                val btnElev = if (isPulserPressed) 3f else 7f
-                val btnBase = project3D(pulserMidX, pulserY, 2f)
-                val btnTop = project3D(pulserMidX, pulserY, btnElev)
-
-                // Chrome beveled collar
-                drawCircle(color = Color(0xFFCFD8DC), radius = 14f, center = btnBase)
-                drawCircle(color = Color(0xFF78909C), radius = 12f, center = btnBase)
-                drawCircle(color = Color(0xFF263238), radius = 10f, center = btnBase)
-
-                // Red tactile button dome
-                drawCircle(color = Color(0xFFB71C1C), radius = 9.5f, center = btnTop)
-                drawCircle(color = Color(0xFFE53935), radius = 8.5f, center = btnTop)
-                drawCircle(color = Color(0xFFFFCDD2).copy(alpha = 0.8f), radius = 3.2f, center = Offset(btnTop.x - 2f, btnTop.y - 2f))
-
-                // Pulse sockets (Active-High and Active-Low inverted)
-                val pulSock1 = project3D(pulserMidX - 9f, botY0 + 13f, 1.5f)
-                val pulSock2 = project3D(pulserMidX + 9f, botY0 + 13f, 1.5f)
-                drawCircle(color = Color.White, radius = 3.6f, center = pulSock1, style = Stroke(0.8f))
-                drawCircle(color = Color(0xFFCFD8DC), radius = 2.6f, center = pulSock1)
-                drawCircle(color = Color(0xFF111111), radius = 1.4f, center = pulSock1)
-                drawCircle(color = Color.White, radius = 3.6f, center = pulSock2, style = Stroke(0.8f))
-                drawCircle(color = Color(0xFFCFD8DC), radius = 2.6f, center = pulSock2)
-                drawCircle(color = Color(0xFF111111), radius = 1.4f, center = pulSock2)
+                // Silver Banana Plugs with Red Strain Relief Collars
+                drawCircle(color = Color(0xFFD32F2F), radius = 5.2f, center = w3Start)
+                drawCircle(color = Color(0xFFECEFF1), radius = 3.5f, center = w3Start)
+                drawCircle(color = Color(0xFFD32F2F), radius = 5.2f, center = w3End)
+                drawCircle(color = Color(0xFFECEFF1), radius = 3.5f, center = w3End)
             } else {
                 // Top PCB FR-4 Solder Mask Surface
                 drawPath(
@@ -1702,93 +1740,81 @@ fun Circuit3DCanvas(
                 val h = def?.height ?: 48f
                 val chipHeight = 16f
                 val isSelected = comp.id == currentSelectedId
+                val centerTop = project3D(comp.x + w / 2f, comp.y + h / 2f, chipHeight)
+                val isChip = comp.type != "SWITCH" && comp.type != "LED" && comp.type != "CONST_HIGH" && comp.type != "CONST_LOW"
 
-                // Top face corners
-                val ct0 = project3D(comp.x, comp.y, chipHeight)
-                val ct1 = project3D(comp.x + w, comp.y, chipHeight)
-                val ct2 = project3D(comp.x + w, comp.y + h, chipHeight)
-                val ct3 = project3D(comp.x, comp.y + h, chipHeight)
+                if (isChip) {
+                    // Top face corners
+                    val ct0 = project3D(comp.x, comp.y, chipHeight)
+                    val ct1 = project3D(comp.x + w, comp.y, chipHeight)
+                    val ct2 = project3D(comp.x + w, comp.y + h, chipHeight)
+                    val ct3 = project3D(comp.x, comp.y + h, chipHeight)
 
-                // Base corners on PCB
-                val cb0 = project3D(comp.x, comp.y, 0f)
-                val cb1 = project3D(comp.x + w, comp.y, 0f)
-                val cb2 = project3D(comp.x + w, comp.y + h, 0f)
-                val cb3 = project3D(comp.x, comp.y + h, 0f)
+                    // Base corners on PCB
+                    val cb0 = project3D(comp.x, comp.y, 0f)
+                    val cb1 = project3D(comp.x + w, comp.y, 0f)
+                    val cb2 = project3D(comp.x + w, comp.y + h, 0f)
+                    val cb3 = project3D(comp.x, comp.y + h, 0f)
 
-                // Chip drop shadow on PCB
-                drawPath(
-                    path = Path().apply {
-                        moveTo(cb0.x, cb0.y + 4f)
-                        lineTo(cb1.x, cb1.y + 4f)
-                        lineTo(cb2.x, cb2.y + 4f)
-                        lineTo(cb3.x, cb3.y + 4f)
-                        close()
-                    },
-                    color = Color.Black.copy(alpha = 0.5f)
-                )
+                    // Chip drop shadow on PCB
+                    drawPath(
+                        path = Path().apply {
+                            moveTo(cb0.x, cb0.y + 4f)
+                            lineTo(cb1.x, cb1.y + 4f)
+                            lineTo(cb2.x, cb2.y + 4f)
+                            lineTo(cb3.x, cb3.y + 4f)
+                            close()
+                        },
+                        color = Color.Black.copy(alpha = 0.5f)
+                    )
 
-                // Chrome DIP Metallic Pins
-                val numPins = 4
-                for (p in 0 until numPins) {
-                    val frac = (p + 0.5f) / numPins
-                    // Left pin
-                    val lTop = project3D(comp.x, comp.y + h * frac, chipHeight * 0.6f)
-                    val lBot = project3D(comp.x - 6f, comp.y + h * frac, 0f)
-                    drawLine(color = Color(0xFFC0C0C0), start = lTop, end = lBot, strokeWidth = 2.4f)
-                    drawCircle(color = Color(0xFFD4AF37), radius = 2.5f, center = lBot)
+                    // Chrome DIP Metallic Pins
+                    val numPins = 4
+                    for (p in 0 until numPins) {
+                        val frac = (p + 0.5f) / numPins
+                        // Left pin
+                        val lTop = project3D(comp.x, comp.y + h * frac, chipHeight * 0.6f)
+                        val lBot = project3D(comp.x - 6f, comp.y + h * frac, 0f)
+                        drawLine(color = Color(0xFFC0C0C0), start = lTop, end = lBot, strokeWidth = 2.4f)
+                        drawCircle(color = Color(0xFFD4AF37), radius = 2.5f, center = lBot)
 
-                    // Right pin
-                    val rTop = project3D(comp.x + w, comp.y + h * frac, chipHeight * 0.6f)
-                    val rBot = project3D(comp.x + w + 6f, comp.y + h * frac, 0f)
-                    drawLine(color = Color(0xFFC0C0C0), start = rTop, end = rBot, strokeWidth = 2.4f)
-                    drawCircle(color = Color(0xFFD4AF37), radius = 2.5f, center = rBot)
-                }
+                        // Right pin
+                        val rTop = project3D(comp.x + w, comp.y + h * frac, chipHeight * 0.6f)
+                        val rBot = project3D(comp.x + w + 6f, comp.y + h * frac, 0f)
+                        drawLine(color = Color(0xFFC0C0C0), start = rTop, end = rBot, strokeWidth = 2.4f)
+                        drawCircle(color = Color(0xFFD4AF37), radius = 2.5f, center = rBot)
+                    }
 
-                // Front 3D Extruded Bevel Face
-                drawPath(
-                    path = Path().apply {
-                        moveTo(ct3.x, ct3.y)
-                        lineTo(ct2.x, ct2.y)
-                        lineTo(cb2.x, cb2.y)
-                        lineTo(cb3.x, cb3.y)
-                        close()
-                    },
-                    color = Color(0xFF141920)
-                )
+                    // Front 3D Extruded Bevel Face
+                    drawPath(
+                        path = Path().apply {
+                            moveTo(ct3.x, ct3.y)
+                            lineTo(ct2.x, ct2.y)
+                            lineTo(cb2.x, cb2.y)
+                            lineTo(cb3.x, cb3.y)
+                            close()
+                        },
+                        color = Color(0xFF141920)
+                    )
 
-                // Right 3D Extruded Bevel Face
-                drawPath(
-                    path = Path().apply {
-                        moveTo(ct1.x, ct1.y)
-                        lineTo(ct2.x, ct2.y)
-                        lineTo(cb2.x, cb2.y)
-                        lineTo(cb1.x, cb1.y)
-                        close()
-                    },
-                    color = Color(0xFF0F1318)
-                )
+                    // Right 3D Extruded Bevel Face
+                    drawPath(
+                        path = Path().apply {
+                            moveTo(ct1.x, ct1.y)
+                            lineTo(ct2.x, ct2.y)
+                            lineTo(cb2.x, cb2.y)
+                            lineTo(cb1.x, cb1.y)
+                            close()
+                        },
+                        color = Color(0xFF0F1318)
+                    )
 
-                // Top Face of DIP IC (Matte Epoxy Black with subtle sheen)
-                val topBodyColor = when (comp.type) {
-                    "SWITCH" -> Color(0xFF1B2A38)
-                    "LED" -> Color(0xFF15261D)
-                    "OSCILLATOR" -> Color(0xFF2E2413)
-                    else -> Color(0xFF1E2530)
-                }
+                    // Top Face of DIP IC (Matte Epoxy Black with subtle sheen)
+                    val topBodyColor = when (comp.type) {
+                        "OSCILLATOR" -> Color(0xFF2E2413)
+                        else -> Color(0xFF1E2530)
+                    }
 
-                drawPath(
-                    path = Path().apply {
-                        moveTo(ct0.x, ct0.y)
-                        lineTo(ct1.x, ct1.y)
-                        lineTo(ct2.x, ct2.y)
-                        lineTo(ct3.x, ct3.y)
-                        close()
-                    },
-                    color = topBodyColor
-                )
-
-                // Selected State: Glowing Cyan Holographic Outline
-                if (isSelected) {
                     drawPath(
                         path = Path().apply {
                             moveTo(ct0.x, ct0.y)
@@ -1797,191 +1823,222 @@ fun Circuit3DCanvas(
                             lineTo(ct3.x, ct3.y)
                             close()
                         },
-                        color = Color(0xFF00E5FF),
-                        style = Stroke(width = 3.5f)
+                        color = topBodyColor
                     )
-                    drawCircle(color = Color.White, radius = 4f, center = ct0)
-                    drawCircle(color = Color.White, radius = 4f, center = ct1)
-                    drawCircle(color = Color.White, radius = 4f, center = ct2)
-                    drawCircle(color = Color.White, radius = 4f, center = ct3)
+
+                    // Selected State: Glowing Cyan Holographic Outline
+                    if (isSelected) {
+                        drawPath(
+                            path = Path().apply {
+                                moveTo(ct0.x, ct0.y)
+                                lineTo(ct1.x, ct1.y)
+                                lineTo(ct2.x, ct2.y)
+                                lineTo(ct3.x, ct3.y)
+                                close()
+                            },
+                            color = Color(0xFF00E5FF),
+                            style = Stroke(width = 3.5f)
+                        )
+                        drawCircle(color = Color.White, radius = 4f, center = ct0)
+                        drawCircle(color = Color.White, radius = 4f, center = ct1)
+                        drawCircle(color = Color.White, radius = 4f, center = ct2)
+                        drawCircle(color = Color.White, radius = 4f, center = ct3)
+                    } else {
+                        drawPath(
+                            path = Path().apply {
+                                moveTo(ct0.x, ct0.y)
+                                lineTo(ct1.x, ct1.y)
+                                lineTo(ct2.x, ct2.y)
+                                lineTo(ct3.x, ct3.y)
+                                close()
+                            },
+                            color = Color(0xFF384A60),
+                            style = Stroke(width = 1.2f)
+                        )
+                    }
+
+                    // Alignment Notch at pin 1 end
+                    val notchCenter = Offset((ct0.x + ct1.x) / 2f, (ct0.y + ct1.y) / 2f)
+                    drawCircle(color = Color(0xFF0A0D11), radius = 3.5f, center = notchCenter)
+
+                    // Chip Text Silkscreen
+                    val textCenter = Offset(
+                        (ct0.x + ct1.x + ct2.x + ct3.x) / 4f,
+                        (ct0.y + ct1.y + ct2.y + ct3.y) / 4f + 3f
+                    )
+                    val labelText = comp.label.ifBlank { def?.name ?: comp.type }
+                    drawContext.canvas.nativeCanvas.drawText(
+                        labelText.take(9),
+                        textCenter.x,
+                        textCenter.y,
+                        chipTextPaint
+                    )
                 } else {
-                    drawPath(
-                        path = Path().apply {
-                            moveTo(ct0.x, ct0.y)
-                            lineTo(ct1.x, ct1.y)
-                            lineTo(ct2.x, ct2.y)
-                            lineTo(ct3.x, ct3.y)
-                            close()
-                        },
-                        color = Color(0xFF384A60),
-                        style = Stroke(width = 1.2f)
-                    )
+                    // Discrete Components (Standalone Metal Switches & 5mm Red LEDs on PCB)
+                    val padL = project3D(comp.x + 10f, comp.y + h / 2f, 0.5f)
+                    val padR = project3D(comp.x + w - 10f, comp.y + h / 2f, 0.5f)
+                    drawCircle(color = Color(0xFFD4AF37), radius = 4.2f, center = padL)
+                    drawCircle(color = Color(0xFF1B2A38), radius = 2f, center = padL)
+                    drawCircle(color = Color(0xFFD4AF37), radius = 4.2f, center = padR)
+                    drawCircle(color = Color(0xFF1B2A38), radius = 2f, center = padR)
+
+                    if (isSelected) {
+                        val selC = project3D(comp.x + w / 2f, comp.y + h / 2f, 0.5f)
+                        drawCircle(color = Color(0xFF00E5FF), radius = 24f, center = selC, style = Stroke(2.5f))
+                    }
                 }
-
-                // Alignment Notch at pin 1 end
-                val notchCenter = Offset((ct0.x + ct1.x) / 2f, (ct0.y + ct1.y) / 2f)
-                drawCircle(color = Color(0xFF0A0D11), radius = 3.5f, center = notchCenter)
-
-                // Chip Text Silkscreen
-                val centerTop = Offset(
-                    (ct0.x + ct1.x + ct2.x + ct3.x) / 4f,
-                    (ct0.y + ct1.y + ct2.y + ct3.y) / 4f + 3f
-                )
-                val labelText = comp.label.ifBlank { def?.name ?: comp.type }
-                drawContext.canvas.nativeCanvas.drawText(
-                    labelText.take(9),
-                    centerTop.x,
-                    centerTop.y,
-                    chipTextPaint
-                )
 
                 // Component specific 3D physical widgets
                 when (comp.type) {
                     "SWITCH" -> {
-                        // Realistic Metal Lever / Toggle Switch
-                        val swBase = project3D(comp.x + w / 2f, comp.y + h / 2f, chipHeight)
-                        val tiltY = if (comp.switchState) 12f else -12f
-                        val leverTip = project3D(comp.x + w / 2f, comp.y + h / 2f + tiltY, chipHeight + 22f)
+                        // Realistic Standalone Metal Lever / Toggle Switch Mounted on PCB
+                        val swBase = project3D(comp.x + w / 2f, comp.y + h / 2f, 1.5f)
+                        val tiltY = if (comp.switchState) 14f else -14f
+                        val leverTip = project3D(comp.x + w / 2f, comp.y + h / 2f + tiltY, 26f)
 
                         // 1. Threaded Chrome Hex Mounting Nut & Bushing Collar
-                        drawCircle(color = Color(0xFF6E7781), radius = 13.5f, center = swBase)
-                        drawCircle(color = Color(0xFFD0D7DE), radius = 11f, center = swBase)
-                        drawCircle(color = Color(0xFF24292F), radius = 7.5f, center = swBase)
-                        drawCircle(color = Color(0xFFAFB8C1), radius = 5.5f, center = swBase)
+                        drawCircle(color = Color(0xFF546E7A), radius = 15f, center = swBase)
+                        drawCircle(color = Color(0xFFCFD8DC), radius = 12.5f, center = swBase)
+                        drawCircle(color = Color(0xFF263238), radius = 8.5f, center = swBase)
+                        drawCircle(color = Color(0xFFB0BEC5), radius = 6.2f, center = swBase)
 
-                        // 2. Solid Metal Lever Bat / Arm with Shaded Chrome Cylindrical Body
+                        // 2. Solid Metal Lever Bat with Shaded Chrome Cylindrical Body
                         // Dark cast shadow under bat
                         drawLine(
-                            color = Color(0xFF424A53),
+                            color = Color(0xFF37474F),
                             start = swBase,
                             end = leverTip,
-                            strokeWidth = 6.5f,
+                            strokeWidth = 7f,
                             cap = StrokeCap.Round
                         )
                         // Main chrome metallic body
                         drawLine(
-                            color = Color(0xFFD0D7DE),
+                            color = Color(0xFFCFD8DC),
                             start = swBase,
                             end = leverTip,
-                            strokeWidth = 4.8f,
+                            strokeWidth = 5.2f,
                             cap = StrokeCap.Round
                         )
                         // Specular white highlight along top edge
                         drawLine(
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = Color.White.copy(alpha = 0.95f),
                             start = swBase,
                             end = leverTip,
-                            strokeWidth = 1.6f,
+                            strokeWidth = 1.8f,
                             cap = StrokeCap.Round
                         )
 
                         // 3. Spherical Polished Chrome Bat Tip with Specular Glint
-                        drawCircle(color = Color(0xFF57606A), radius = 7.5f, center = leverTip)
-                        drawCircle(color = Color(0xFFF6F8FA), radius = 6.2f, center = leverTip)
-                        drawCircle(color = Color.White, radius = 2.4f, center = Offset(leverTip.x - 1.8f, leverTip.y - 1.8f))
+                        drawCircle(color = Color(0xFF455A64), radius = 8.2f, center = leverTip)
+                        drawCircle(color = Color(0xFFECEFF1), radius = 7f, center = leverTip)
+                        drawCircle(color = Color.White, radius = 2.8f, center = Offset(leverTip.x - 2f, leverTip.y - 2f))
 
                         // Active State Status Collar Ring
                         if (comp.switchState) {
-                            drawCircle(color = SignalHigh.copy(alpha = 0.45f), radius = 10.5f, center = swBase, style = Stroke(width = 2.5f))
-                            drawCircle(color = SignalHigh, radius = 3.5f, center = leverTip)
+                            drawCircle(color = Color(0xFF00E676).copy(alpha = 0.55f), radius = 12f, center = swBase, style = Stroke(width = 2.5f))
+                            drawCircle(color = Color(0xFF00E676), radius = 3.8f, center = leverTip)
                         } else {
-                            drawCircle(color = Color(0xFF38465B), radius = 2.5f, center = leverTip)
+                            drawCircle(color = Color(0xFF37474F), radius = 3f, center = leverTip)
                         }
 
-                        // Physical ON/OFF Engraved Marker
-                        val statusText = if (comp.switchState) "ON [1]" else "OFF [0]"
+                        // Physical ON/OFF Engraved Silkscreen Marker
+                        val statusText = if (comp.switchState) "1 (ON)" else "0 (OFF)"
                         val statusPaint = Paint().apply {
                             color = if (comp.switchState) android.graphics.Color.rgb(0, 230, 118) else android.graphics.Color.LTGRAY
-                            textSize = 9.5f
+                            textSize = 10f
                             typeface = Typeface.MONOSPACE
                             textAlign = Paint.Align.CENTER
                         }
-                        drawContext.canvas.nativeCanvas.drawText(statusText, swBase.x, swBase.y + 19f, statusPaint)
+                        drawContext.canvas.nativeCanvas.drawText(statusText, swBase.x, swBase.y + 22f, statusPaint)
                     }
                     "LED" -> {
-                        // Authentic 3D Through-Hole LED Diode with Internal Reflector & Photonic Glow
+                        // Authentic 5mm Through-Hole Red Cylindrical Dome LED Diode
                         val isHigh = comp.inputValues.values.any { it == DigitalState.HIGH }
                         val diodeCenter = Offset(comp.x + w / 2f, comp.y + h / 2f)
 
-                        // 1. Through-Hole Metal Wire Leads descending to PCB
-                        val leadL1 = project3D(diodeCenter.x - 4f, diodeCenter.y, 1f)
-                        val leadL2 = project3D(diodeCenter.x + 4f, diodeCenter.y, 1f)
-                        val leadT1 = project3D(diodeCenter.x - 4f, diodeCenter.y, chipHeight + 2f)
-                        val leadT2 = project3D(diodeCenter.x + 4f, diodeCenter.y, chipHeight + 2f)
-                        drawLine(color = Color(0xFF8C959F), start = leadL1, end = leadT1, strokeWidth = 2.2f)
-                        drawLine(color = Color(0xFF8C959F), start = leadL2, end = leadT2, strokeWidth = 2.2f)
+                        // 1. Through-Hole Metal Wire Leads descending directly into PCB solder pads
+                        val leadL1 = project3D(diodeCenter.x - 5f, diodeCenter.y, 0.5f)
+                        val leadL2 = project3D(diodeCenter.x + 5f, diodeCenter.y, 0.5f)
+                        val leadT1 = project3D(diodeCenter.x - 5f, diodeCenter.y, 5f)
+                        val leadT2 = project3D(diodeCenter.x + 5f, diodeCenter.y, 5f)
+                        drawLine(color = Color(0xFFB0BEC5), start = leadL1, end = leadT1, strokeWidth = 2.4f)
+                        drawLine(color = Color(0xFFB0BEC5), start = leadL2, end = leadT2, strokeWidth = 2.4f)
 
-                        // 2. Under-Diode Ambient Glow Pool on PCB when Active
+                        // 2. Under-Diode Ambient Red Glow Pool on PCB when Active
                         val gndCenter = project3D(diodeCenter.x, diodeCenter.y, 0.5f)
                         if (isHigh) {
-                            drawCircle(color = SignalHigh.copy(alpha = 0.32f), radius = 24f, center = gndCenter)
-                            drawCircle(color = SignalHigh.copy(alpha = 0.55f), radius = 13f, center = gndCenter)
+                            drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.35f), radius = 28f, center = gndCenter)
+                            drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.65f), radius = 15f, center = gndCenter)
                         }
 
                         // 3. LED Base Flange Collar (Lip Ring)
-                        val flangeCenter = project3D(diodeCenter.x, diodeCenter.y, chipHeight + 3f)
-                        val flangeColor = if (isHigh) SignalHigh.copy(alpha = 0.85f) else Color(0xFF1E3825)
-                        drawCircle(color = flangeColor, radius = 11f, center = flangeCenter)
-                        drawCircle(color = Color(0xFF24292F), radius = 11.2f, center = flangeCenter, style = Stroke(1.2f))
+                        val flangeCenter = project3D(diodeCenter.x, diodeCenter.y, 5.5f)
+                        val flangeColor = if (isHigh) Color(0xFFFF1744).copy(alpha = 0.9f) else Color(0xFF5A0812)
+                        drawCircle(color = flangeColor, radius = 12f, center = flangeCenter)
+                        drawCircle(color = Color(0xFF263238), radius = 12.2f, center = flangeCenter, style = Stroke(1.2f))
 
-                        // 4. Cylindrical Lens Barrel Body
-                        val barrelCenter = project3D(diodeCenter.x, diodeCenter.y, chipHeight + 9f)
-                        val barrelColor = if (isHigh) SignalHigh else Color(0xFF163820)
-                        drawCircle(color = barrelColor, radius = 9.5f, center = barrelCenter)
+                        // 4. Cylindrical Red Lens Barrel Body
+                        val barrelCenter = project3D(diodeCenter.x, diodeCenter.y, 11f)
+                        val barrelColor = if (isHigh) Color(0xFFFF1744) else Color(0xFF4D050B)
+                        drawCircle(color = barrelColor, radius = 10.5f, center = barrelCenter)
 
                         // 5. Hemispherical Convex Dome Top & Internal Semiconductor Die
-                        val domeCenter = project3D(diodeCenter.x, diodeCenter.y, chipHeight + 17f)
+                        val domeCenter = project3D(diodeCenter.x, diodeCenter.y, 19f)
                         if (isHigh) {
-                            // Photonic Bloom Aura
-                            drawCircle(color = SignalHigh.copy(alpha = 0.16f), radius = 30f, center = domeCenter)
-                            drawCircle(color = SignalHigh.copy(alpha = 0.45f), radius = 18f, center = domeCenter)
-                            // Vivid Glowing Dome
-                            drawCircle(color = SignalHigh, radius = 10f, center = domeCenter)
-                            // Incandescent Internal Die Core
-                            drawCircle(color = Color(0xFFE8FFE8), radius = 4.5f, center = domeCenter)
-                            drawCircle(color = Color.White, radius = 2.5f, center = domeCenter)
+                            // Photonic Radiant Bloom Aura
+                            drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.22f), radius = 34f, center = domeCenter)
+                            drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.55f), radius = 20f, center = domeCenter)
+                            // Vivid Glowing Red Dome
+                            drawCircle(color = Color(0xFFFF1744), radius = 11.5f, center = domeCenter)
+                            // Incandescent White/Pink Core Die
+                            drawCircle(color = Color(0xFFFFCDD2), radius = 5.5f, center = domeCenter)
+                            drawCircle(color = Color.White, radius = 3.2f, center = domeCenter)
                             // Specular Reflection Curved Highlight
                             drawArc(
-                                color = Color.White.copy(alpha = 0.9f),
+                                color = Color.White.copy(alpha = 0.95f),
                                 startAngle = -135f,
                                 sweepAngle = 90f,
                                 useCenter = false,
-                                topLeft = Offset(domeCenter.x - 7.5f, domeCenter.y - 7.5f),
-                                size = androidx.compose.ui.geometry.Size(15f, 15f),
-                                style = Stroke(2f, cap = StrokeCap.Round)
+                                topLeft = Offset(domeCenter.x - 8.5f, domeCenter.y - 8.5f),
+                                size = androidx.compose.ui.geometry.Size(17f, 17f),
+                                style = Stroke(2.2f, cap = StrokeCap.Round)
                             )
                         } else {
-                            // Dark Translucent Emerald Epoxy Body
-                            drawCircle(color = Color(0xFF112E19), radius = 10f, center = domeCenter)
-                            // Internal Anvil / Cathode Lead Frame Wire Silhouette
+                            // Dark Translucent Ruby Epoxy Body
+                            drawCircle(color = Color(0xFF52060D), radius = 11.5f, center = domeCenter)
+                            // Internal Anvil / Cathode Lead Frame Wire Silhouette inside translucent red dome
                             drawLine(
-                                color = Color(0xFF57606A),
-                                start = Offset(domeCenter.x - 3.5f, domeCenter.y + 3f),
-                                end = Offset(domeCenter.x + 3.5f, domeCenter.y - 3f),
-                                strokeWidth = 2.2f
+                                color = Color(0xFF78909C),
+                                start = Offset(domeCenter.x - 4f, domeCenter.y + 3.5f),
+                                end = Offset(domeCenter.x + 4f, domeCenter.y - 3.5f),
+                                strokeWidth = 2.4f
                             )
                             // Soft Specular Gloss Highlight
                             drawArc(
-                                color = Color.White.copy(alpha = 0.45f),
+                                color = Color.White.copy(alpha = 0.5f),
                                 startAngle = -135f,
                                 sweepAngle = 80f,
                                 useCenter = false,
-                                topLeft = Offset(domeCenter.x - 7.5f, domeCenter.y - 7.5f),
-                                size = androidx.compose.ui.geometry.Size(15f, 15f),
-                                style = Stroke(1.4f, cap = StrokeCap.Round)
+                                topLeft = Offset(domeCenter.x - 8.5f, domeCenter.y - 8.5f),
+                                size = androidx.compose.ui.geometry.Size(17f, 17f),
+                                style = Stroke(1.5f, cap = StrokeCap.Round)
                             )
                         }
+
+                        // Red LED Silkscreen Label
+                        val ledLblPos = project3D(diodeCenter.x, diodeCenter.y + 18f, 0.8f)
+                        drawContext.canvas.nativeCanvas.drawText("LED", ledLblPos.x, ledLblPos.y, trainerPinNumPaint)
                     }
                     "CONST_HIGH", "CONST_LOW" -> {
                         val isHigh = comp.type == "CONST_HIGH"
-                        val swBase = project3D(comp.x + w / 2f, comp.y + h / 2f, chipHeight)
-                        val tiltY = if (isHigh) 10f else -10f
-                        val leverTip = project3D(comp.x + w / 2f, comp.y + h / 2f + tiltY, chipHeight + 20f)
+                        val swBase = project3D(comp.x + w / 2f, comp.y + h / 2f, 1.5f)
+                        val tiltY = if (isHigh) 12f else -12f
+                        val leverTip = project3D(comp.x + w / 2f, comp.y + h / 2f + tiltY, 24f)
 
                         // Threaded Chrome Hex Mounting Nut
-                        drawCircle(color = Color(0xFF6E7781), radius = 11.5f, center = swBase)
-                        drawCircle(color = Color(0xFF24292F), radius = 7.5f, center = swBase)
-                        drawCircle(color = Color(0xFFAFB8C1), radius = 5.2f, center = swBase)
+                        drawCircle(color = Color(0xFF6E7781), radius = 12f, center = swBase)
+                        drawCircle(color = Color(0xFF24292F), radius = 8f, center = swBase)
+                        drawCircle(color = Color(0xFFAFB8C1), radius = 5.5f, center = swBase)
 
                         // Solid Chrome Metal Bat Arm
                         drawLine(color = Color(0xFF424A53), start = swBase, end = leverTip, strokeWidth = 5.5f, cap = StrokeCap.Round)
