@@ -1,0 +1,12 @@
+{
+  "name": "logiclab-web",
+  "version": "1.0.0",
+  "description": "LogicLab Digital Electronics Simulator & IC Trainer Kit Web Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "author": "LogicLab",
+  "license": "Apache-2.0"
+}

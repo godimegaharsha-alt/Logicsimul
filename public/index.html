@@ -1291,9 +1291,10 @@
 
     function resizeTrainer() {
       const rect = trainerCanvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       if (rect.width > 0 && rect.height > 0) {
-        trainerCanvas.width = rect.width * window.devicePixelRatio;
-        trainerCanvas.height = rect.height * window.devicePixelRatio;
+        trainerCanvas.width = rect.width * dpr;
+        trainerCanvas.height = rect.height * dpr;
         renderTrainer();
       }
     }
@@ -2042,9 +2043,10 @@
 
     function resizeCAD() {
       const rect = cadCanvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       if (rect.width > 0 && rect.height > 0) {
-        cadCanvas.width = rect.width * window.devicePixelRatio;
-        cadCanvas.height = rect.height * window.devicePixelRatio;
+        cadCanvas.width = rect.width * dpr;
+        cadCanvas.height = rect.height * dpr;
         renderCAD();
       }
     }
@@ -2289,9 +2291,10 @@
     function resizeScope() {
       if (!scopeCanvas) return;
       const rect = scopeCanvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       if (rect.width > 0 && rect.height > 0) {
-        scopeCanvas.width = rect.width * window.devicePixelRatio;
-        scopeCanvas.height = rect.height * window.devicePixelRatio;
+        scopeCanvas.width = rect.width * dpr;
+        scopeCanvas.height = rect.height * dpr;
       }
     }
     window.addEventListener('resize', resizeScope);
@@ -2364,12 +2367,19 @@
     }
 
     function renderScope() {
+      const scopeView = document.getElementById('view-oscilloscope');
+      if (!scopeView || scopeView.style.display === 'none') {
+        requestAnimationFrame(renderScope);
+        return;
+      }
+
       updateScopeBuffer();
 
       const w = scopeCanvas.width;
       const h = scopeCanvas.height;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-      if (w > 0 && h > 0 && document.getElementById('view-oscilloscope').style.display !== 'none') {
+      if (w > 0 && h > 0) {
         sCtx.clearRect(0, 0, w, h);
 
         // Dark Phosphor CRT Background
@@ -2380,8 +2390,8 @@
         sCtx.fillRect(0, 0, w, h);
 
         // Reticle Grid Dimensions (10 Horizontal Divs, 8 Vertical Divs)
-        const marginX = 45 * window.devicePixelRatio;
-        const marginY = 25 * window.devicePixelRatio;
+        const marginX = 45 * dpr;
+        const marginY = 25 * dpr;
         const gridW = w - marginX * 2;
         const gridH = h - marginY * 2;
         const xDiv = gridW / 10;
@@ -2416,7 +2426,7 @@
         // Ticks along vertical center line
         for (let j = 0; j <= 40; j++) {
           const ty = marginY + j * (yDiv / 5);
-          const tickLen = (j % 5 === 0) ? 6 * window.devicePixelRatio : 3 * window.devicePixelRatio;
+          const tickLen = (j % 5 === 0) ? 6 * dpr : 3 * dpr;
           sCtx.beginPath();
           sCtx.moveTo(midX - tickLen, ty);
           sCtx.lineTo(midX + tickLen, ty);
@@ -2426,7 +2436,7 @@
         // Ticks along horizontal center line
         for (let i = 0; i <= 50; i++) {
           const tx = marginX + i * (xDiv / 5);
-          const tickLen = (i % 5 === 0) ? 6 * window.devicePixelRatio : 3 * window.devicePixelRatio;
+          const tickLen = (i % 5 === 0) ? 6 * dpr : 3 * dpr;
           sCtx.beginPath();
           sCtx.moveTo(tx, midY - tickLen);
           sCtx.lineTo(tx, midY + tickLen);
@@ -2448,7 +2458,7 @@
 
           // Ground Marker Icon on Left Gutter
           sCtx.fillStyle = ch.color;
-          sCtx.font = `bold ${Math.round(10 * window.devicePixelRatio)}px monospace`;
+          sCtx.font = `bold ${Math.round(10 * dpr)}px monospace`;
           sCtx.textAlign = 'right';
           sCtx.fillText(`[${cIdx + 1}⏚]`, marginX - 6, groundY + 4);
 
@@ -2465,9 +2475,9 @@
 
           // Draw Glowing Waveform
           sCtx.strokeStyle = ch.color;
-          sCtx.lineWidth = 2.2 * window.devicePixelRatio;
+          sCtx.lineWidth = 2.2 * dpr;
           sCtx.shadowColor = ch.color;
-          sCtx.shadowBlur = 8 * window.devicePixelRatio;
+          sCtx.shadowBlur = 8 * dpr;
           sCtx.beginPath();
 
           const stepX = gridW / (BUFFER_SIZE - 1);
@@ -2587,11 +2597,18 @@
       }
     });
 
-    window.addEventListener('DOMContentLoaded', () => {
+    function initApp() {
       resizeTrainer();
-      resizeScope();
+      resizeCAD();
       updateTruthTable();
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
+    window.addEventListener('load', initApp);
   </script>
 </body>
 </html>
