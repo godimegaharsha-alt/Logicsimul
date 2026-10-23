@@ -698,6 +698,7 @@
     <div class="nav-links">
       <a href="#workbench" onclick="switchMainTab('trainer')">3D IC Trainer</a>
       <a href="#workbench" onclick="switchMainTab('cad')">2D Schematic CAD</a>
+      <a href="#workbench" onclick="switchMainTab('oscilloscope')">Live Oscilloscope</a>
       <a href="#workbench" onclick="switchMainTab('experiments')">Lab Experiments</a>
       <a href="#workbench" onclick="switchMainTab('truth-table')">Truth Table</a>
       <a href="#workbench" onclick="switchMainTab('encyclopedia')">IC Pinouts</a>
@@ -705,20 +706,23 @@
       <a href="#laptop">Laptop / PC Guide</a>
     </div>
     <div class="header-actions">
+      <a href="/app-debug.apk" class="btn btn-green btn-sm" download="LogicLab-v2.4.0.apk" title="Direct APK Download (42MB)">
+        📥 Download APK (42MB)
+      </a>
       <button class="btn btn-outline btn-sm" id="btn-sound-toggle" onclick="toggleAudio()" title="Sound Effects">
         🔊 Sound: ON
       </button>
-      <button class="btn btn-green btn-sm" id="btn-install-pwa" onclick="installPWA()" title="Install on Laptop">
-        💻 Install App
+      <button class="btn btn-outline btn-sm" id="btn-install-pwa" onclick="installPWA()" title="Install on Laptop">
+        💻 Install Web App
       </button>
     </div>
   </header>
 
   <!-- Hero Section -->
   <section class="hero">
-    <div class="badge">Digital Electronics CAD & 3D Hardware Simulation</div>
+    <div class="badge">Digital Electronics CAD • 3D Hardware Simulation • Oscilloscope</div>
     <h1>Professional Logic Simulator & IC Trainer Kit</h1>
-    <p>Design real-time digital schematics or wire up an authentic 3D wooden briefcase IC Trainer Kit with clickable metal toggle switches, glowing LED diodes, dual 7-segment displays, and cyan ZIF sockets.</p>
+    <p>Design real-time digital schematics or wire up an authentic 3D wooden briefcase IC Trainer Kit with clickable metal toggle switches, glowing LED diodes, 4-channel DSO oscilloscope, and dual 7-segment displays.</p>
     <div class="hero-actions">
       <button class="btn btn-green" onclick="switchMainTab('trainer'); scrollToWorkbench();">
         🎛️ Launch 3D Trainer Kit
@@ -726,8 +730,14 @@
       <button class="btn btn-outline" onclick="switchMainTab('cad'); scrollToWorkbench();">
         📐 Open 2D Schematic CAD
       </button>
+      <button class="btn btn-outline" onclick="switchMainTab('oscilloscope'); scrollToWorkbench();">
+        📈 Live Oscilloscope
+      </button>
+      <a href="/app-debug.apk" class="btn btn-green" download="LogicLab-v2.4.0.apk">
+        📥 Download Android APK (42MB)
+      </a>
       <a href="#laptop" class="btn btn-outline">
-        💻 Laptop & PC Setup Guide
+        💻 Laptop & PC Guide
       </a>
     </div>
   </section>
@@ -742,6 +752,9 @@
           </button>
           <button class="tab-pill" id="tab-btn-cad" onclick="switchMainTab('cad')">
             📐 2D Schematic CAD
+          </button>
+          <button class="tab-pill" id="tab-btn-oscilloscope" onclick="switchMainTab('oscilloscope')">
+            📈 Live Oscilloscope
           </button>
           <button class="tab-pill" id="tab-btn-experiments" onclick="switchMainTab('experiments')">
             🧪 Lab Experiments
@@ -763,6 +776,9 @@
           </button>
           <button class="btn btn-outline btn-sm" onclick="resetCamera()">
             🎯 Reset Camera
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="toggleFullscreen()" title="Fullscreen for Laptop Viewing">
+            ⛶ Fullscreen
           </button>
         </div>
       </div>
@@ -959,6 +975,57 @@
           </div>
         </div>
       </div>
+
+      <!-- View 6: Live Digital Storage Oscilloscope (Exclusive for Laptop & CAD) -->
+      <div id="view-oscilloscope" style="display: none;">
+        <div style="padding: 1.5rem; background: #06090E;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; flex-wrap: wrap; gap: 0.6rem;">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <span style="font-size: 1.2rem; font-weight: 800; color: var(--accent-cyan);">📈 Digital Storage Oscilloscope (DSO-4)</span>
+              <span class="badge" style="margin: 0; background: rgba(0,229,255,0.15); border-color: var(--accent-cyan); color: var(--accent-cyan);">4-Channel Live Waveform</span>
+            </div>
+            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+              <button class="btn btn-outline btn-sm" id="btn-scope-freeze" onclick="toggleScopeFreeze()">
+                ⏸️ FREEZE WAVE
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="cycleScopeTimebase()">
+                ⏱️ TIME/DIV: <span id="scope-timebase-lbl" style="color:var(--accent-cyan); font-weight:700;">10ms</span>
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="resetScopeBuffer()">
+                🔄 Clear Buffer
+              </button>
+            </div>
+          </div>
+
+          <!-- Oscilloscope Screen with Reticle Grid -->
+          <div style="position: relative; width: 100%; height: 420px; background: #03080D; border: 2px solid #1E293B; border-radius: 10px; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+            <canvas id="scopeCanvas" style="width: 100%; height: 100%; display: block;"></canvas>
+            <div style="position: absolute; top: 12px; left: 16px; font-family: var(--font-mono); font-size: 0.75rem; color: #64748B; pointer-events: none; background: rgba(8,12,16,0.8); padding: 4px 10px; border-radius: 4px; border: 1px solid #1E293B;">
+              TRIG: AUTO • 500kSa/s • CH1/CH2/CH3/CH4
+            </div>
+          </div>
+
+          <!-- Channel HUD & Live Voltage Readouts -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 1rem;">
+            <div style="background: rgba(17,23,32,0.9); border: 1px solid #1E293B; border-left: 3px solid #00E5FF; padding: 0.6rem 0.85rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.78rem;">
+              <div style="color: #00E5FF; font-weight: 700; margin-bottom: 2px;">CH1 • S1 Input</div>
+              <div style="color: var(--text-primary);" id="scope-hud-ch1">LEVEL: HIGH (5.0V) | Vpp: 5.0V</div>
+            </div>
+            <div style="background: rgba(17,23,32,0.9); border: 1px solid #1E293B; border-left: 3px solid #00E676; padding: 0.6rem 0.85rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.78rem;">
+              <div style="color: #00E676; font-weight: 700; margin-bottom: 2px;">CH2 • S2 Input</div>
+              <div style="color: var(--text-primary);" id="scope-hud-ch2">LEVEL: LOW (0.0V) | Vpp: 5.0V</div>
+            </div>
+            <div style="background: rgba(17,23,32,0.9); border: 1px solid #1E293B; border-left: 3px solid #FFB300; padding: 0.6rem 0.85rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.78rem;">
+              <div style="color: #FFB300; font-weight: 700; margin-bottom: 2px;">CH3 • Clock (1Hz)</div>
+              <div style="color: var(--text-primary);" id="scope-hud-ch3">FREQ: 1.00 Hz | Duty: 50%</div>
+            </div>
+            <div style="background: rgba(17,23,32,0.9); border: 1px solid #1E293B; border-left: 3px solid #FF1744; padding: 0.6rem 0.85rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.78rem;">
+              <div style="color: #FF1744; font-weight: 700; margin-bottom: 2px;">CH4 • Output L1</div>
+              <div style="color: var(--text-primary);" id="scope-hud-ch4">OUTPUT: 0.0V | AND Logic</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1132,7 +1199,7 @@
     }
 
     function switchMainTab(tab) {
-      const tabs = ['trainer', 'cad', 'experiments', 'truth-table', 'encyclopedia'];
+      const tabs = ['trainer', 'cad', 'oscilloscope', 'experiments', 'truth-table', 'encyclopedia'];
       tabs.forEach(t => {
         const view = document.getElementById('view-' + t);
         const btn = document.getElementById('tab-btn-' + t);
@@ -1144,8 +1211,20 @@
         resizeTrainer();
       } else if (tab === 'cad') {
         resizeCAD();
+      } else if (tab === 'oscilloscope') {
+        resizeScope();
       } else if (tab === 'truth-table') {
         updateTruthTable();
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
       }
     }
 
@@ -1235,6 +1314,223 @@
       const px = cx + rx * zoom;
       const py = cy + (ry * sinP - z * cosP) * zoom;
       return { x: px, y: py };
+    }
+
+    // Authentic 3D ASW-23-101 Metal Low Voltage Toggle Switch (Daier) - Volumetric Bat Lever
+    function draw3DSwitchASW23101(ctx, sx, sy, isOn, zoom, cx, cy) {
+      const baseZ = 2;
+      const sBase = project3D(sx, sy, baseZ, cx, cy);
+
+      // 1. Stamped Metal Keyed Indexing Faceplate
+      const p0 = project3D(sx - 6, sy - 9, baseZ + 0.2, cx, cy);
+      const p1 = project3D(sx + 6, sy - 9, baseZ + 0.2, cx, cy);
+      const p2 = project3D(sx + 6, sy + 9, baseZ + 0.2, cx, cy);
+      const p3 = project3D(sx - 6, sy + 9, baseZ + 0.2, cx, cy);
+
+      ctx.fillStyle = '#CFD8DC';
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 0.8 * zoom; ctx.stroke();
+
+      // "ON" and "OFF" lettering
+      ctx.fillStyle = '#37474F';
+      ctx.font = `bold ${Math.round(5.5 * zoom)}px monospace`;
+      ctx.textAlign = 'center';
+      const onP = project3D(sx, sy - 5.5, baseZ + 0.4, cx, cy);
+      const offP = project3D(sx, sy + 6.5, baseZ + 0.4, cx, cy);
+      ctx.fillText('ON', onP.x, onP.y);
+      ctx.fillText('OFF', offP.x, offP.y);
+
+      // 2. Threaded Collar Neck with Ridges
+      const collarR = 5.2 * zoom;
+      ctx.fillStyle = '#78909C';
+      ctx.beginPath(); ctx.arc(sBase.x, sBase.y, collarR, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ECEFF1'; ctx.lineWidth = 0.8 * zoom;
+      ctx.beginPath(); ctx.arc(sBase.x, sBase.y, collarR * 0.82, 0, Math.PI * 2); ctx.stroke();
+
+      // 3. 6-Sided Chrome Hex Locking Nut
+      const hexR = 7.5 * zoom;
+      ctx.fillStyle = '#ECEFF1';
+      ctx.strokeStyle = '#90A4AE';
+      ctx.lineWidth = 1 * zoom;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const ang = (i * 60) * Math.PI / 180;
+        const hp = project3D(sx + (hexR / zoom) * Math.cos(ang), sy + (hexR / zoom) * Math.sin(ang), baseZ + 0.8, cx, cy);
+        if (i === 0) ctx.moveTo(hp.x, hp.y); else ctx.lineTo(hp.x, hp.y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 4. Solid Volumetric Metallic Bat Lever (Tapered Mesh, NOT a line with a dot!)
+      const tilt = isOn ? -9.5 : 9.5;
+      const leverTip = project3D(sx, sy + tilt, 19, cx, cy);
+      const leverBase = project3D(sx, sy, baseZ + 1.2, cx, cy);
+
+      // Bat Lever Normal Vector for volumetric width
+      const ldx = leverTip.x - leverBase.x;
+      const ldy = leverTip.y - leverBase.y;
+      const len = Math.max(0.001, Math.hypot(ldx, ldy));
+      const nx = -ldy / len;
+      const ny = ldx / len;
+
+      const rBase = 2.4 * zoom;
+      const rBulb = 4.0 * zoom;
+      const rTip = 3.2 * zoom;
+
+      const pBulb = { x: leverBase.x + ldx * 0.78, y: leverBase.y + ldy * 0.78 };
+
+      // Left Dark Metallic Shadow Body (#37474F)
+      ctx.fillStyle = '#37474F';
+      ctx.beginPath();
+      ctx.moveTo(leverBase.x - nx * rBase, leverBase.y - ny * rBase);
+      ctx.lineTo(pBulb.x - nx * rBulb, pBulb.y - ny * rBulb);
+      ctx.lineTo(leverTip.x - nx * rTip, leverTip.y - ny * rTip);
+      ctx.lineTo(leverTip.x, leverTip.y);
+      ctx.lineTo(pBulb.x, pBulb.y);
+      ctx.lineTo(leverBase.x, leverBase.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right Polished Chrome Body (#CFD8DC)
+      ctx.fillStyle = '#CFD8DC';
+      ctx.beginPath();
+      ctx.moveTo(leverBase.x, leverBase.y);
+      ctx.lineTo(pBulb.x, pBulb.y);
+      ctx.lineTo(leverTip.x, leverTip.y);
+      ctx.lineTo(leverTip.x + nx * rTip, leverTip.y + ny * rTip);
+      ctx.lineTo(pBulb.x + nx * rBulb, pBulb.y + ny * rBulb);
+      ctx.lineTo(leverBase.x + nx * rBase, leverBase.y + ny * rBase);
+      ctx.closePath();
+      ctx.fill();
+
+      // Bright Center Specular Highlight Strip (#FFFFFF)
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1.4 * zoom;
+      ctx.beginPath();
+      ctx.moveTo(leverBase.x + nx * 0.8 * zoom, leverBase.y + ny * 0.8 * zoom);
+      ctx.lineTo(leverTip.x + nx * 1.0 * zoom, leverTip.y + ny * 1.0 * zoom);
+      ctx.stroke();
+
+      // 5. Volumetric Spherical Bat Lever Cap at Tip with Specular Reflection
+      ctx.fillStyle = '#263238';
+      ctx.beginPath(); ctx.arc(leverTip.x, leverTip.y, rTip + 0.5 * zoom, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ECEFF1';
+      ctx.beginPath(); ctx.arc(leverTip.x, leverTip.y, rTip, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.arc(leverTip.x - 1 * zoom, leverTip.y - 1 * zoom, 1.4 * zoom, 0, Math.PI * 2); ctx.fill();
+
+      // Active Green Status Ring when ON
+      if (isOn) {
+        ctx.strokeStyle = '#00E676';
+        ctx.lineWidth = 1.6 * zoom;
+        ctx.beginPath(); ctx.arc(sBase.x, sBase.y, hexR + 2.5 * zoom, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+
+    // Authentic 3D Through-Hole 5mm LED Diode (with internal leadframe, anvil, post, die cup, and dome)
+    function draw3DRealDiode(ctx, lx, ly, isLit, zoom, cx, cy) {
+      const baseZ = 1.5;
+      const flangeZ = baseZ + 3;
+      const barrelZ = baseZ + 7;
+      const domeZ = baseZ + 12;
+
+      const fCenter = project3D(lx, ly, flangeZ, cx, cy);
+      const bCenter = project3D(lx, ly, barrelZ, cx, cy);
+      const dCenter = project3D(lx, ly, domeZ, cx, cy);
+
+      // 1. Through-Hole Solder Pad Annulus
+      const padL = project3D(lx - 3.5, ly, 0, cx, cy);
+      const padR = project3D(lx + 3.5, ly, 0, cx, cy);
+      [padL, padR].forEach(p => {
+        ctx.fillStyle = '#D4AF37';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2.8 * zoom, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1E2124';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.2 * zoom, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // 2. Base Flange Collar (Lip Ring with flat notch)
+      const flangeR = 7.5 * zoom;
+      ctx.fillStyle = isLit ? 'rgba(255, 23, 68, 0.9)' : '#4A0810';
+      ctx.beginPath(); ctx.arc(fCenter.x, fCenter.y, flangeR, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#263238'; ctx.lineWidth = 1 * zoom; ctx.stroke();
+
+      // 3. Cylindrical Transparent Epoxy Barrel
+      const barrelR = 6.2 * zoom;
+      ctx.fillStyle = isLit ? '#FF1744' : '#3E050B';
+      ctx.beginPath(); ctx.arc(bCenter.x, bCenter.y, barrelR, 0, Math.PI * 2); ctx.fill();
+
+      // 4. VISIBLE INTERNAL LEADFRAME (Inside the translucent resin)
+      const leadframeZ = baseZ + 8;
+      const anvilStem = project3D(lx - 2.5, ly, leadframeZ - 2, cx, cy);
+      const anvilTop = project3D(lx - 0.5, ly, leadframeZ + 2.5, cx, cy);
+      const anvilLeft = project3D(lx - 3.5, ly, leadframeZ + 1.8, cx, cy);
+      const anvilRight = project3D(lx + 0.8, ly, leadframeZ + 1.8, cx, cy);
+
+      // Stamped Metal Anvil Flag
+      ctx.fillStyle = '#90A4AE';
+      ctx.beginPath();
+      ctx.moveTo(anvilStem.x, anvilStem.y);
+      ctx.lineTo(anvilLeft.x, anvilLeft.y);
+      ctx.lineTo(anvilTop.x, anvilTop.y);
+      ctx.lineTo(anvilRight.x, anvilRight.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Die Cup & Semiconductor Chip
+      const dieCup = project3D(lx - 0.8, ly, leadframeZ + 1.5, cx, cy);
+      ctx.fillStyle = isLit ? '#FFFFFF' : '#263238';
+      ctx.beginPath(); ctx.arc(dieCup.x, dieCup.y, 1.4 * zoom, 0, Math.PI * 2); ctx.fill();
+
+      // Anode Post & Arched Gold Bond Wire
+      const postBot = project3D(lx + 2.4, ly, leadframeZ - 2, cx, cy);
+      const postTop = project3D(lx + 2.4, ly, leadframeZ + 2.2, cx, cy);
+      ctx.strokeStyle = '#B0BEC5'; ctx.lineWidth = 1.2 * zoom;
+      ctx.beginPath(); ctx.moveTo(postBot.x, postBot.y); ctx.lineTo(postTop.x, postTop.y); ctx.stroke();
+
+      ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 0.8 * zoom;
+      ctx.beginPath();
+      ctx.moveTo(postTop.x, postTop.y);
+      ctx.quadraticCurveTo((postTop.x + dieCup.x)/2, postTop.y - 3 * zoom, dieCup.x, dieCup.y);
+      ctx.stroke();
+
+      // 5. Hemispherical Optical Dome Lens Top
+      const domeR = 6.8 * zoom;
+      if (isLit) {
+        // Multi-tier Photonic Radiant Bloom Aura
+        ctx.fillStyle = 'rgba(255, 23, 68, 0.22)';
+        ctx.beginPath(); ctx.arc(dCenter.x, dCenter.y, 22 * zoom, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255, 23, 68, 0.58)';
+        ctx.beginPath(); ctx.arc(dCenter.x, dCenter.y, 13 * zoom, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = '#FF1744';
+        ctx.beginPath(); ctx.arc(dCenter.x, dCenter.y, domeR, 0, Math.PI * 2); ctx.fill();
+
+        // Incandescent Core
+        ctx.fillStyle = '#FFCDD2';
+        ctx.beginPath(); ctx.arc(dCenter.x, dCenter.y, 3 * zoom, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath(); ctx.arc(dCenter.x, dCenter.y, 1.5 * zoom, 0, Math.PI * 2); ctx.fill();
+
+        // Curved Glass Specular Highlight Arc
+        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.4 * zoom;
+        ctx.beginPath();
+        ctx.arc(dCenter.x, dCenter.y, domeR * 0.72, -2.4, -0.9);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#4C060E';
+        ctx.beginPath(); ctx.arc(dCenter.x, dCenter.y, domeR, 0, Math.PI * 2); ctx.fill();
+
+        // Specular Gloss Highlight
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'; ctx.lineWidth = 1.1 * zoom;
+        ctx.beginPath();
+        ctx.arc(dCenter.x, dCenter.y, domeR * 0.72, -2.4, -0.9);
+        ctx.stroke();
+      }
     }
 
     function renderTrainer() {
@@ -1364,27 +1660,14 @@
       tCtx.fillStyle = '#FFFFFF'; tCtx.font = `bold ${Math.round(8.5 * zoom)}px monospace`; tCtx.textAlign = 'center';
       tCtx.fillText('OUTPUT SECTION (L1..L12)', outTitleP.x, outTitleP.y);
 
-      // 12 Output LEDs & Banana Terminals
+      // 12 Authentic 3D Through-Hole 5mm LED Diodes & Banana Terminals
       const ledSpacing = (splitX - 16 - (bx0 + 20)) / 11;
       for (let i = 0; i < 12; i++) {
         const lx = bx0 + 20 + i * ledSpacing;
-        const lp = project3D(lx, topY0 + 25, 4, cx, cy);
         const sp = project3D(lx, topY0 + 48, 1, cx, cy);
 
-        // LED Bezel
-        tCtx.fillStyle = '#212529';
-        tCtx.beginPath(); tCtx.arc(lp.x, lp.y, 5 * zoom, 0, Math.PI * 2); tCtx.fill();
-
-        // Glowing Diode Core
-        if (leds[i]) {
-          tCtx.fillStyle = '#FF1744';
-          tCtx.shadowColor = '#FF1744'; tCtx.shadowBlur = 12 * zoom;
-          tCtx.beginPath(); tCtx.arc(lp.x, lp.y, 4 * zoom, 0, Math.PI * 2); tCtx.fill();
-          tCtx.shadowBlur = 0;
-        } else {
-          tCtx.fillStyle = '#450A12';
-          tCtx.beginPath(); tCtx.arc(lp.x, lp.y, 3.5 * zoom, 0, Math.PI * 2); tCtx.fill();
-        }
+        // Authentic 3D Through-Hole 5mm LED Diode (Visible Anvil, Post, Die Cup, Bond Wire & Radial Bloom)
+        draw3DRealDiode(tCtx, lx, topY0 + 25, leds[i], zoom, cx, cy);
 
         // Banana Socket
         tCtx.fillStyle = '#CFD8DC';
@@ -1526,12 +1809,11 @@
       tCtx.fillStyle = '#FFFFFF'; tCtx.font = `bold ${Math.round(8 * zoom)}px monospace`;
       tCtx.fillText('INPUT SECTION (S1..S12)', inTitleP.x, inTitleP.y);
 
-      // 12 Heavy-Duty Metal Toggle Switches with RED Vinyl Bat Caps
+      // 12 Authentic Volumetric 3D Toggle Switches (ASW-23-101 Metal Lever, Hex Nut, Indexing Plate)
       const swSpacing = inW / 13;
       for (let i = 0; i < 12; i++) {
         const sx = bx0 + 10 + (i + 1) * swSpacing;
         const isOn = switches[i];
-        const tilt = isOn ? -9 : 9;
 
         // Terminal socket above switch
         const sockP = project3D(sx, by1 - 56, 1, cx, cy);
@@ -1540,26 +1822,8 @@
         tCtx.fillStyle = '#111111';
         tCtx.beginPath(); tCtx.arc(sockP.x, sockP.y, 1.8 * zoom, 0, Math.PI * 2); tCtx.fill();
 
-        // Switch Base Bushing
-        const sBase = project3D(sx, by1 - 32, 2, cx, cy);
-        const sTip = project3D(sx, by1 - 32 + tilt, 17, cx, cy);
-
-        tCtx.fillStyle = '#78909C';
-        tCtx.beginPath(); tCtx.arc(sBase.x, sBase.y, 6.5 * zoom, 0, Math.PI * 2); tCtx.fill();
-
-        // Metal Lever Arm
-        tCtx.strokeStyle = '#ECEFF1'; tCtx.lineWidth = 2.8 * zoom;
-        tCtx.beginPath(); tCtx.moveTo(sBase.x, sBase.y); tCtx.lineTo(sTip.x, sTip.y); tCtx.stroke();
-
-        // Red Vinyl Bat Cap
-        tCtx.fillStyle = '#E53935';
-        tCtx.beginPath(); tCtx.arc(sTip.x, sTip.y, 4.2 * zoom, 0, Math.PI * 2); tCtx.fill();
-
-        // Active Green Status Ring when ON
-        if (isOn) {
-          tCtx.strokeStyle = '#00E676'; tCtx.lineWidth = 1.6 * zoom;
-          tCtx.beginPath(); tCtx.arc(sBase.x, sBase.y, 7.5 * zoom, 0, Math.PI * 2); tCtx.stroke();
-        }
+        // Volumetric 3D ASW-23-101 Toggle Switch (Polished chrome bat lever, light/shadow facets, hex locking nut)
+        draw3DSwitchASW23101(tCtx, sx, by1 - 32, isOn, zoom, cx, cy);
       }
 
       // 7. CLOCK GENERATOR (Bottom Right)
@@ -1581,12 +1845,8 @@
       tCtx.fillStyle = '#FFFFFF'; tCtx.font = `bold ${Math.round(7.5 * zoom)}px monospace`;
       tCtx.fillText('CLOCK', clkTitleP.x, clkTitleP.y);
 
-      // Blinking Clock LED
-      const clkLedP = project3D(clkX0 + clkW / 2, botY0 + 22, 4, cx, cy);
-      tCtx.fillStyle = clockBlink ? '#FFB300' : '#422800';
-      if (clockBlink) { tCtx.shadowColor = '#FFB300'; tCtx.shadowBlur = 10 * zoom; }
-      tCtx.beginPath(); tCtx.arc(clkLedP.x, clkLedP.y, 4.5 * zoom, 0, Math.PI * 2); tCtx.fill();
-      tCtx.shadowBlur = 0;
+      // Blinking Clock Diode (Authentic 3D Through-Hole LED)
+      draw3DRealDiode(tCtx, clkX0 + clkW / 2, botY0 + 22, clockBlink, zoom, cx, cy);
 
       // 8. TACTILE RED PULSER (Bottom Right Corner)
       const pulX0 = clkX0 + clkW + 8;
@@ -2011,10 +2271,325 @@
     }
   </script>
 
-  <!-- Initialize -->
+  <!-- Live 4-Channel Digital Storage Oscilloscope (DSO-4) Engine -->
   <script>
+    const scopeCanvas = document.getElementById('scopeCanvas');
+    const sCtx = scopeCanvas.getContext('2d');
+
+    let scopeFrozen = false;
+    const timebases = ['2ms', '5ms', '10ms', '20ms', '50ms', '100ms'];
+    let timebaseIdx = 2; // default 10ms
+    const BUFFER_SIZE = 600;
+    const ch1Buf = new Float32Array(BUFFER_SIZE);
+    const ch2Buf = new Float32Array(BUFFER_SIZE);
+    const ch3Buf = new Float32Array(BUFFER_SIZE);
+    const ch4Buf = new Float32Array(BUFFER_SIZE);
+    let sampleCounter = 0;
+
+    function resizeScope() {
+      if (!scopeCanvas) return;
+      const rect = scopeCanvas.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        scopeCanvas.width = rect.width * window.devicePixelRatio;
+        scopeCanvas.height = rect.height * window.devicePixelRatio;
+      }
+    }
+    window.addEventListener('resize', resizeScope);
+
+    function toggleScopeFreeze() {
+      scopeFrozen = !scopeFrozen;
+      const btn = document.getElementById('btn-scope-freeze');
+      if (btn) {
+        btn.innerHTML = scopeFrozen ? '▶️ RESUME WAVE' : '⏸️ FREEZE WAVE';
+        btn.classList.toggle('btn-green', scopeFrozen);
+      }
+      showLaptopToast(scopeFrozen ? '⏸️ DSO Frozen (Single-Shot)' : '▶️ DSO Running (Auto-Trigger)');
+    }
+
+    function cycleScopeTimebase() {
+      timebaseIdx = (timebaseIdx + 1) % timebases.length;
+      const lbl = document.getElementById('scope-timebase-lbl');
+      if (lbl) lbl.innerText = timebases[timebaseIdx];
+      showLaptopToast(`⏱️ Timebase set to ${timebases[timebaseIdx]}/DIV`);
+    }
+
+    function resetScopeBuffer() {
+      ch1Buf.fill(0);
+      ch2Buf.fill(0);
+      ch3Buf.fill(0);
+      ch4Buf.fill(0);
+      showLaptopToast('🔄 DSO Waveform Buffer Cleared');
+    }
+
+    function updateScopeBuffer() {
+      if (scopeFrozen) return;
+
+      sampleCounter++;
+      // Calculate current states
+      const s1 = switches[11] ? 5.0 : 0.0;
+      const s2 = switches[10] ? 5.0 : 0.0;
+      const t = Date.now() / 1000;
+      // 1.0Hz Clock pulse with 50% duty cycle
+      const clk = ((Math.sin(t * Math.PI * 2) > 0) || clockBlink) ? 5.0 : 0.0;
+      // AND output
+      const outL1 = (s1 > 2.5 && s2 > 2.5) ? 5.0 : 0.0;
+
+      // Shift buffers left
+      for (let i = 0; i < BUFFER_SIZE - 1; i++) {
+        ch1Buf[i] = ch1Buf[i + 1];
+        ch2Buf[i] = ch2Buf[i + 1];
+        ch3Buf[i] = ch3Buf[i + 1];
+        ch4Buf[i] = ch4Buf[i + 1];
+      }
+
+      // Add realistic analog jitter/noise (~±0.04V)
+      const noise = (Math.random() - 0.5) * 0.08;
+      ch1Buf[BUFFER_SIZE - 1] = Math.max(0, s1 + noise);
+      ch2Buf[BUFFER_SIZE - 1] = Math.max(0, s2 + noise);
+      ch3Buf[BUFFER_SIZE - 1] = Math.max(0, clk + noise);
+      ch4Buf[BUFFER_SIZE - 1] = Math.max(0, outL1 + noise);
+
+      // Periodically update HUD readouts
+      if (sampleCounter % 15 === 0) {
+        const hud1 = document.getElementById('scope-hud-ch1');
+        const hud2 = document.getElementById('scope-hud-ch2');
+        const hud3 = document.getElementById('scope-hud-ch3');
+        const hud4 = document.getElementById('scope-hud-ch4');
+
+        if (hud1) hud1.innerText = `LEVEL: ${s1 > 2.5 ? 'HIGH (5.0V)' : 'LOW (0.0V)'} | Vpp: ${s1 > 2.5 ? '5.01V' : '0.04V'}`;
+        if (hud2) hud2.innerText = `LEVEL: ${s2 > 2.5 ? 'HIGH (5.0V)' : 'LOW (0.0V)'} | Vpp: ${s2 > 2.5 ? '5.01V' : '0.04V'}`;
+        if (hud3) hud3.innerText = `FREQ: 1.00 Hz | Duty: 50.0% | Vpp: 5.00V`;
+        if (hud4) hud4.innerText = `OUTPUT: ${outL1 > 2.5 ? '5.0V (HIGH)' : '0.0V (LOW)'} | AND Logic`;
+      }
+    }
+
+    function renderScope() {
+      updateScopeBuffer();
+
+      const w = scopeCanvas.width;
+      const h = scopeCanvas.height;
+
+      if (w > 0 && h > 0 && document.getElementById('view-oscilloscope').style.display !== 'none') {
+        sCtx.clearRect(0, 0, w, h);
+
+        // Dark Phosphor CRT Background
+        const grad = sCtx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, Math.max(w, h));
+        grad.addColorStop(0, '#041017');
+        grad.addColorStop(1, '#02060A');
+        sCtx.fillStyle = grad;
+        sCtx.fillRect(0, 0, w, h);
+
+        // Reticle Grid Dimensions (10 Horizontal Divs, 8 Vertical Divs)
+        const marginX = 45 * window.devicePixelRatio;
+        const marginY = 25 * window.devicePixelRatio;
+        const gridW = w - marginX * 2;
+        const gridH = h - marginY * 2;
+        const xDiv = gridW / 10;
+        const yDiv = gridH / 8;
+
+        // Major Reticle Grid
+        sCtx.strokeStyle = 'rgba(0, 229, 255, 0.14)';
+        sCtx.lineWidth = 1;
+
+        for (let i = 0; i <= 10; i++) {
+          const gx = marginX + i * xDiv;
+          sCtx.beginPath();
+          sCtx.moveTo(gx, marginY);
+          sCtx.lineTo(gx, marginY + gridH);
+          sCtx.stroke();
+        }
+
+        for (let j = 0; j <= 8; j++) {
+          const gy = marginY + j * yDiv;
+          sCtx.beginPath();
+          sCtx.moveTo(marginX, gy);
+          sCtx.lineTo(marginX + gridW, gy);
+          sCtx.stroke();
+        }
+
+        // Center Crosshair Subdivision Ticks (every 0.2 div)
+        const midX = marginX + gridW / 2;
+        const midY = marginY + gridH / 2;
+        sCtx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+        sCtx.lineWidth = 1.2;
+
+        // Ticks along vertical center line
+        for (let j = 0; j <= 40; j++) {
+          const ty = marginY + j * (yDiv / 5);
+          const tickLen = (j % 5 === 0) ? 6 * window.devicePixelRatio : 3 * window.devicePixelRatio;
+          sCtx.beginPath();
+          sCtx.moveTo(midX - tickLen, ty);
+          sCtx.lineTo(midX + tickLen, ty);
+          sCtx.stroke();
+        }
+
+        // Ticks along horizontal center line
+        for (let i = 0; i <= 50; i++) {
+          const tx = marginX + i * (xDiv / 5);
+          const tickLen = (i % 5 === 0) ? 6 * window.devicePixelRatio : 3 * window.devicePixelRatio;
+          sCtx.beginPath();
+          sCtx.moveTo(tx, midY - tickLen);
+          sCtx.lineTo(tx, midY + tickLen);
+          sCtx.stroke();
+        }
+
+        // 4 Dedicated Trace Channels:
+        // Each channel occupies 2 vertical divisions (height: yDiv * 1.5, scale: 5V -> yDiv * 1.2)
+        const channels = [
+          { name: 'CH1: S1 (Input)', color: '#00E5FF', buf: ch1Buf, baseDiv: 1.8 },
+          { name: 'CH2: S2 (Input)', color: '#00E676', buf: ch2Buf, baseDiv: 3.7 },
+          { name: 'CH3: Clock (1Hz)', color: '#FFB300', buf: ch3Buf, baseDiv: 5.6 },
+          { name: 'CH4: L1 (Output)', color: '#FF1744', buf: ch4Buf, baseDiv: 7.5 }
+        ];
+
+        channels.forEach((ch, cIdx) => {
+          const groundY = marginY + ch.baseDiv * yDiv;
+          const vScale = (yDiv * 1.2) / 5.0; // 5V full amplitude
+
+          // Ground Marker Icon on Left Gutter
+          sCtx.fillStyle = ch.color;
+          sCtx.font = `bold ${Math.round(10 * window.devicePixelRatio)}px monospace`;
+          sCtx.textAlign = 'right';
+          sCtx.fillText(`[${cIdx + 1}⏚]`, marginX - 6, groundY + 4);
+
+          // Zero-Volt dashed baseline
+          sCtx.strokeStyle = ch.color;
+          sCtx.globalAlpha = 0.2;
+          sCtx.setLineDash([4, 6]);
+          sCtx.beginPath();
+          sCtx.moveTo(marginX, groundY);
+          sCtx.lineTo(marginX + gridW, groundY);
+          sCtx.stroke();
+          sCtx.setLineDash([]);
+          sCtx.globalAlpha = 1.0;
+
+          // Draw Glowing Waveform
+          sCtx.strokeStyle = ch.color;
+          sCtx.lineWidth = 2.2 * window.devicePixelRatio;
+          sCtx.shadowColor = ch.color;
+          sCtx.shadowBlur = 8 * window.devicePixelRatio;
+          sCtx.beginPath();
+
+          const stepX = gridW / (BUFFER_SIZE - 1);
+          for (let s = 0; s < BUFFER_SIZE; s++) {
+            const wx = marginX + s * stepX;
+            const volt = ch.buf[s];
+            const wy = groundY - volt * vScale;
+            if (s === 0) sCtx.moveTo(wx, wy);
+            else sCtx.lineTo(wx, wy);
+          }
+          sCtx.stroke();
+          sCtx.shadowBlur = 0;
+        });
+      }
+
+      requestAnimationFrame(renderScope);
+    }
+    requestAnimationFrame(renderScope);
+  </script>
+
+  <!-- Laptop Keyboard Shortcuts System & Toast Notifications -->
+  <script>
+    function showLaptopToast(msg) {
+      let toast = document.getElementById('laptop-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'laptop-toast';
+        toast.style.position = 'fixed';
+        toast.style.bottom = '24px';
+        toast.style.right = '24px';
+        toast.style.background = 'rgba(13, 20, 30, 0.95)';
+        toast.style.color = '#00E5FF';
+        toast.style.border = '1px solid #00E5FF';
+        toast.style.borderRadius = '8px';
+        toast.style.padding = '10px 18px';
+        toast.style.fontFamily = 'monospace';
+        toast.style.fontSize = '0.85rem';
+        toast.style.boxShadow = '0 8px 24px rgba(0,0,0,0.6)';
+        toast.style.zIndex = '99999';
+        toast.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+        toast.style.pointerEvents = 'none';
+        document.body.appendChild(toast);
+      }
+      toast.innerText = msg;
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+      }, 2200);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      // Avoid capturing inside inputs or textareas
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const key = e.key.toUpperCase();
+
+      // Number keys 1..8 toggle switches S1..S8
+      if (e.key >= '1' && e.key <= '8') {
+        const swIdx = 12 - parseInt(e.key); // S1 is switches[11], S2 is switches[10], etc.
+        if (swIdx >= 0 && swIdx < 12) {
+          switches[swIdx] = !switches[swIdx];
+          playSwitchSound();
+          renderTrainer();
+          updateTruthTable();
+          showLaptopToast(`⌨️ Switch S${e.key} toggled ${switches[swIdx] ? 'ON (1)' : 'OFF (0)'}`);
+        }
+        return;
+      }
+
+      // Space: Freeze scope if in oscilloscope tab, or trigger pulser if in trainer tab
+      if (e.code === 'Space') {
+        e.preventDefault();
+        const scopeView = document.getElementById('view-oscilloscope');
+        if (scopeView && scopeView.style.display !== 'none') {
+          toggleScopeFreeze();
+        } else {
+          pulserActive = true;
+          playPulserSound();
+          renderTrainer();
+          showLaptopToast('⌨️ Tactile Pulser Triggered');
+          setTimeout(() => {
+            pulserActive = false;
+            renderTrainer();
+          }, 180);
+        }
+        return;
+      }
+
+      // Tab Shortcuts: O = Oscilloscope, T = Trainer Kit, C = CAD, E = Experiments, F = Fullscreen
+      if (key === 'O') {
+        switchMainTab('oscilloscope');
+        showLaptopToast('⌨️ View: 📈 Live Digital Oscilloscope');
+      } else if (key === 'T') {
+        switchMainTab('trainer');
+        showLaptopToast('⌨️ View: 🎛️ 3D IC Trainer Kit');
+      } else if (key === 'C') {
+        switchMainTab('cad');
+        showLaptopToast('⌨️ View: 📐 Schematic CAD Lab');
+      } else if (key === 'E') {
+        switchMainTab('experiments');
+        showLaptopToast('⌨️ View: 🧪 Guided Experiments');
+      } else if (key === 'F') {
+        toggleFullscreen();
+        showLaptopToast('⌨️ Toggled Fullscreen Mode');
+      } else if (key === '+' || key === '=') {
+        zoomIn();
+        showLaptopToast(`⌨️ Camera Zoom In (${zoom.toFixed(1)}x)`);
+      } else if (key === '-' || key === '_') {
+        zoomOut();
+        showLaptopToast(`⌨️ Camera Zoom Out (${zoom.toFixed(1)}x)`);
+      } else if (key === 'R') {
+        resetCamera();
+        showLaptopToast('⌨️ Camera Reset to Default 35°');
+      }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       resizeTrainer();
+      resizeScope();
       updateTruthTable();
     });
   </script>

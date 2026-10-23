@@ -80,6 +80,7 @@ fun SelectionToolbar(
     onToggleSelectedSwitch: () -> Unit,
     onOpenDetails: (() -> Unit)? = null,
     onOpenWaveforms: (() -> Unit)? = null,
+    onProbeWire: ((String) -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -112,6 +113,7 @@ fun SelectionToolbar(
             WireInfoCard(
                 wireId = selectedWireId,
                 onDelete = onDeleteSelected,
+                onProbe = { onProbeWire?.invoke(selectedWireId) },
                 onDismiss = onDismiss
             )
         }
@@ -386,6 +388,7 @@ fun GateInfoCard(
 fun WireInfoCard(
     wireId: String,
     onDelete: () -> Unit,
+    onProbe: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -420,6 +423,17 @@ fun WireInfoCard(
                     fontSize = 8.5.sp
                 )
             }
+
+            // Oscilloscope Probe Button
+            SmallActionButton(
+                icon = Icons.Default.ShowChart,
+                label = "Scope",
+                contentColor = Color(0xFF00E5FF),
+                backgroundColor = Color(0xFF00E5FF).copy(alpha = 0.15f),
+                borderColor = Color(0xFF00E5FF).copy(alpha = 0.6f),
+                onClick = { onProbe?.invoke() },
+                tag = "probe_wire_scope_btn"
+            )
 
             // Small Delete Button
             SmallActionButton(

@@ -80,6 +80,7 @@ import com.example.logiclab.ui.components.LabTopBar
 import com.example.logiclab.ui.components.SaveLoadDialog
 import com.example.logiclab.ui.components.SelectionToolbar
 import com.example.logiclab.ui.components.ThemeSelectionDialog
+import com.example.logiclab.ui.components.OscilloscopeView
 import com.example.logiclab.ui.components.TimingDiagramView
 import com.example.logiclab.ui.components.TruthTableViewer
 import com.example.logiclab.ui.learn.ExperimentModeView
@@ -129,6 +130,8 @@ fun MainScreen(
     val truthTableData by viewModel.truthTableData.collectAsState()
     val signalChannels by viewModel.signalChannels.collectAsState()
     val timeStepCount by viewModel.timeStepCount.collectAsState()
+    val probedWireIds by viewModel.probedWireIds.collectAsState()
+    val wireWaveforms by viewModel.wireWaveforms.collectAsState()
     val savedCircuits by viewModel.savedCircuits.collectAsState()
     val currentTheme by viewModel.currentTheme.collectAsState()
     val themeColors = getLogicLabColors(currentTheme)
@@ -269,6 +272,7 @@ fun MainScreen(
                     var isTruthTableExpanded by remember { mutableStateOf(false) }
                     val panelDrawerHeight by animateDpAsState(
                         targetValue = if (isTruthTableExpanded && bottomPanel == BottomPanelType.TRUTH_TABLE) 180.dp
+                                      else if (bottomPanel == BottomPanelType.OSCILLOSCOPE) 220.dp
                                       else if (bottomPanel == BottomPanelType.TIMING_DIAGRAM) 160.dp
                                       else 140.dp,
                         animationSpec = tween(300),
@@ -304,6 +308,9 @@ fun MainScreen(
                                 },
                                 onOpenWaveforms = {
                                     viewModel.setBottomPanel(BottomPanelType.TIMING_DIAGRAM)
+                                },
+                                onProbeWire = { wireId ->
+                                    viewModel.openOscilloscopeForWire(wireId)
                                 },
                                 onDismiss = {
                                     viewModel.selectComponent(null)
@@ -374,6 +381,18 @@ fun MainScreen(
                                         timeStepCount = timeStepCount,
                                         selectedComponent = selectedComponent
                                     )
+                                    BottomPanelType.OSCILLOSCOPE -> OscilloscopeView(
+                                        wires = wires,
+                                        components = components,
+                                        selectedWireId = selectedWireId,
+                                        probedWireIds = probedWireIds,
+                                        wireWaveforms = wireWaveforms,
+                                        timeStepCount = timeStepCount,
+                                        onToggleWireProbe = { wireId -> viewModel.toggleWireProbe(wireId) },
+                                        onAddWireProbe = { wireId -> viewModel.addWireProbe(wireId) },
+                                        onRemoveWireProbe = { wireId -> viewModel.removeWireProbe(wireId) },
+                                        onClearProbes = { viewModel.clearWireProbes() }
+                                    )
                                     BottomPanelType.NONE -> {}
                                 }
                             }
@@ -407,16 +426,21 @@ fun MainScreen(
                                     onClick = { viewModel.setBottomPanel(BottomPanelType.DIAGNOSTICS) },
                                     tag = "dock_diagnostics_btn"
                                 )
-                                val isOscSelected = selectedComponent != null &&
-                                    (selectedComponent.type == "OSCILLATOR" || selectedComponent.type == "CLOCK")
                                 DockTabButton(
-                                    label = if (isOscSelected) "Oscilloscope ⚡" else "Timing View",
-                                    icon = if (isOscSelected) Icons.Default.ShowChart else Icons.Default.Analytics,
+                                    label = "Timing View",
+                                    icon = Icons.Default.Analytics,
                                     isActive = bottomPanel == BottomPanelType.TIMING_DIAGRAM,
-                                    badgeCount = if (isOscSelected && bottomPanel != BottomPanelType.TIMING_DIAGRAM) 1 else 0,
-                                    badgeColor = Color(0xFFFFB300),
                                     onClick = { viewModel.setBottomPanel(BottomPanelType.TIMING_DIAGRAM) },
                                     tag = "dock_timing_btn"
+                                )
+                                DockTabButton(
+                                    label = "Oscilloscope",
+                                    icon = Icons.Default.ShowChart,
+                                    isActive = bottomPanel == BottomPanelType.OSCILLOSCOPE,
+                                    badgeCount = if (selectedWireId != null || probedWireIds.isNotEmpty()) probedWireIds.size.coerceAtLeast(1) else 0,
+                                    badgeColor = Color(0xFF00E5FF),
+                                    onClick = { viewModel.setBottomPanel(BottomPanelType.OSCILLOSCOPE) },
+                                    tag = "dock_oscilloscope_btn"
                                 )
                             }
 

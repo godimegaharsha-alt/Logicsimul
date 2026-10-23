@@ -52,7 +52,7 @@ object GateSymbols {
             "XNOR" -> drawXnorGate(drawScope, x, y, w, h, strokeColor, fillColor, strokeWidth)
             "BUFFER" -> drawBuffer(drawScope, x, y, w, h, strokeColor, fillColor, strokeWidth)
             "SWITCH" -> drawSwitch(drawScope, x, y, w, h, comp.switchState, isSelected)
-            "LED" -> drawLed(drawScope, x, y, w, h, comp.inputValues["IN"] ?: DigitalState.LOW, isSelected)
+            "LED", "DIODE" -> drawLed(drawScope, x, y, w, h, comp.inputValues["IN"] ?: DigitalState.LOW, isSelected)
             "CLOCK" -> drawClock(drawScope, x, y, w, h, comp.switchState, isSelected)
             "OSCILLATOR" -> drawOscillator(drawScope, x, y, w, h, comp.switchState, isSelected)
             "D_FLIP_FLOP", "JK_FLIP_FLOP", "T_FLIP_FLOP", "SR_FLIP_FLOP",

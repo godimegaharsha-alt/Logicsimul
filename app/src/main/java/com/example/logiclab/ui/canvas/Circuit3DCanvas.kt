@@ -158,6 +158,505 @@ enum class CameraPreset3D(val label: String, val yaw: Float, val pitch: Float) {
  * - PCB Silkscreen grid and layer visibility toggles
  * - Live real-time telemetry (angles, zoom percentage, chip count)
  */
+/**
+ * Authentic Daier ASW-23-101 Metal Low Voltage Toggle Switch 3D Renderer.
+ * Accurately models:
+ * - Molded dark phenolic/bakelite lower box chassis with side screw terminal lugs
+ * - Stamped zinc/nickel top mounting strap with folded ear wings
+ * - Stamped nickel-plated keyed ON/OFF indexing nameplate with alignment notch
+ * - M12 threaded cylindrical collar bushing with horizontal thread ridges
+ * - 6-sided chrome hexagonal mounting lock nut
+ * - Polished solid cylindrical chrome bat lever with rounded hemispherical dome bat tip
+ * - Dynamic tilt physics between ON (-Y / UP) and OFF (+Y / DOWN)
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawASW23101ToggleSwitch(
+    cx: Float,
+    cy: Float,
+    isOn: Boolean,
+    scale: Float = 1.0f,
+    showChassisBox: Boolean = false,
+    project3D: (Float, Float, Float) -> Offset
+) {
+    val z0 = 0.5f
+
+    // 1. Lower Chassis: Molded Dark Phenolic Bakelite Box with M3 Screw Terminals (for Breadboard / PCB)
+    if (showChassisBox) {
+        val bw = 26f * scale
+        val bh = 17f * scale
+        val bz = 9.5f * scale
+
+        // Bakelite box corners
+        val b0 = project3D(cx - bw / 2f, cy - bh / 2f, z0)
+        val b1 = project3D(cx + bw / 2f, cy - bh / 2f, z0)
+        val b2 = project3D(cx + bw / 2f, cy + bh / 2f, z0)
+        val b3 = project3D(cx - bw / 2f, cy + bh / 2f, z0)
+
+        val t0 = project3D(cx - bw / 2f, cy - bh / 2f, bz)
+        val t1 = project3D(cx + bw / 2f, cy - bh / 2f, bz)
+        val t2 = project3D(cx + bw / 2f, cy + bh / 2f, bz)
+        val t3 = project3D(cx - bw / 2f, cy + bh / 2f, bz)
+
+        // Drop shadow under bakelite box
+        val shadowPath = Path().apply {
+            moveTo(b0.x + 4f * scale, b0.y + 4f * scale)
+            lineTo(b1.x + 4f * scale, b1.y + 4f * scale)
+            lineTo(b2.x + 4f * scale, b2.y + 4f * scale)
+            lineTo(b3.x + 4f * scale, b3.y + 4f * scale)
+            close()
+        }
+        drawPath(path = shadowPath, color = Color.Black.copy(alpha = 0.45f))
+
+        // Side & Front Phenolic Box Faces (Molded Dark Charcoal Bakelite #14171A, #1C2024)
+        val frontFace = Path().apply {
+            moveTo(b3.x, b3.y)
+            lineTo(b2.x, b2.y)
+            lineTo(t2.x, t2.y)
+            lineTo(t3.x, t3.y)
+            close()
+        }
+        drawPath(path = frontFace, color = Color(0xFF14171A))
+
+        val rightFace = Path().apply {
+            moveTo(b1.x, b1.y)
+            lineTo(b2.x, b2.y)
+            lineTo(t2.x, t2.y)
+            lineTo(t1.x, t1.y)
+            close()
+        }
+        drawPath(path = rightFace, color = Color(0xFF1C2024))
+
+        // Stamped Zinc/Nickel Top Bracket Plate (#B0BEC5 with folded side tabs)
+        val topPlate = Path().apply {
+            moveTo(t0.x, t0.y)
+            lineTo(t1.x, t1.y)
+            lineTo(t2.x, t2.y)
+            lineTo(t3.x, t3.y)
+            close()
+        }
+        drawPath(path = topPlate, color = Color(0xFFB0BEC5))
+        drawPath(path = topPlate, color = Color(0xFFECEFF1), style = Stroke(0.8f * scale))
+
+        // Stamped zinc side bracket wings
+        val wingL0 = project3D(cx - bw / 2f, cy - 4.5f * scale, bz)
+        val wingL1 = project3D(cx - bw / 2f - 3.5f * scale, cy - 4.5f * scale, bz - 3.5f * scale)
+        val wingL2 = project3D(cx - bw / 2f - 3.5f * scale, cy + 4.5f * scale, bz - 3.5f * scale)
+        val wingL3 = project3D(cx - bw / 2f, cy + 4.5f * scale, bz)
+        drawPath(Path().apply {
+            moveTo(wingL0.x, wingL0.y)
+            lineTo(wingL1.x, wingL1.y)
+            lineTo(wingL2.x, wingL2.y)
+            lineTo(wingL3.x, wingL3.y)
+            close()
+        }, color = Color(0xFF90A4AE))
+
+        // Side Screw Terminal Posts (ASW-23-101 M3 Screw Terminals)
+        val screwL = project3D(cx - bw / 2f - 3f * scale, cy + 3.5f * scale, 3.5f * scale)
+        val screwR = project3D(cx + bw / 2f + 3f * scale, cy + 3.5f * scale, 3.5f * scale)
+
+        // Screw Lug Threads & Heads
+        listOf(screwL, screwR).forEach { sc ->
+            drawCircle(color = Color(0xFF78909C), radius = 4.5f * scale, center = sc)
+            drawCircle(color = Color(0xFFECEFF1), radius = 3.6f * scale, center = sc)
+            // Phillips Cross Slot
+            drawLine(color = Color(0xFF37474F), start = Offset(sc.x - 2.4f * scale, sc.y), end = Offset(sc.x + 2.4f * scale, sc.y), strokeWidth = 1.1f * scale)
+            drawLine(color = Color(0xFF37474F), start = Offset(sc.x, sc.y - 2.4f * scale), end = Offset(sc.x, sc.y + 2.4f * scale), strokeWidth = 1.1f * scale)
+        }
+    }
+
+    val baseZ = if (showChassisBox) 10f * scale else 1.8f
+    val swCenter = project3D(cx, cy, baseZ)
+
+    // 2. Keyed Metal Indexing Nameplate (Stamped nickel plate with notch & "ON"/"OFF" tabs)
+    val plateW = 15f * scale
+    val plateH = 22f * scale
+    val np0 = project3D(cx - plateW / 2f, cy - plateH / 2f, baseZ + 0.2f)
+    val np1 = project3D(cx + plateW / 2f, cy - plateH / 2f, baseZ + 0.2f)
+    val np2 = project3D(cx + plateW / 2f, cy + plateH / 2f, baseZ + 0.2f)
+    val np3 = project3D(cx - plateW / 2f, cy + plateH / 2f, baseZ + 0.2f)
+
+    val nameplatePath = Path().apply {
+        moveTo(np0.x, np0.y)
+        lineTo(np1.x, np1.y)
+        lineTo(np2.x, np2.y)
+        lineTo(np3.x, np3.y)
+        close()
+    }
+    drawPath(path = nameplatePath, color = Color(0xFFCFD8DC))
+    drawPath(path = nameplatePath, color = Color(0xFFFFFFFF).copy(alpha = 0.85f), style = Stroke(0.8f * scale))
+
+    // Keyed alignment notch at the top
+    val notchTip = project3D(cx, cy - plateH / 2f - 2.2f * scale, baseZ + 0.2f)
+    val notchL = project3D(cx - 2.8f * scale, cy - plateH / 2f, baseZ + 0.2f)
+    val notchR = project3D(cx + 2.8f * scale, cy - plateH / 2f, baseZ + 0.2f)
+    drawPath(Path().apply {
+        moveTo(notchL.x, notchL.y)
+        lineTo(notchTip.x, notchTip.y)
+        lineTo(notchR.x, notchR.y)
+        close()
+    }, color = Color(0xFFB0BEC5))
+
+    // Stamped ON / OFF lettering on the indexing plate
+    val onPos = project3D(cx, cy - plateH * 0.32f, baseZ + 0.3f)
+    val offPos = project3D(cx, cy + plateH * 0.38f, baseZ + 0.3f)
+    val plateFontPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(55, 71, 79)
+        textSize = 6.8f * scale
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+    drawContext.canvas.nativeCanvas.drawText("ON", onPos.x, onPos.y, plateFontPaint)
+    drawContext.canvas.nativeCanvas.drawText("OFF", offPos.x, offPos.y, plateFontPaint)
+
+    // 3. Threaded Cylindrical Bushing Collar (M12 Threaded Neck with machine ridges)
+    val collarRadius = 6.5f * scale
+    drawCircle(color = Color(0xFF455A64), radius = collarRadius + 1.2f * scale, center = swCenter)
+    drawCircle(color = Color(0xFF90A4AE), radius = collarRadius, center = swCenter)
+    // Horizontal machine thread grooves
+    drawCircle(color = Color(0xFFECEFF1), radius = collarRadius * 0.84f, center = swCenter, style = Stroke(1.0f * scale))
+    drawCircle(color = Color(0xFF607D8B), radius = collarRadius * 0.68f, center = swCenter, style = Stroke(0.8f * scale))
+
+    // 4. Hexagonal Chrome Locking Nut (6-sided faceted nut with 3D extrusion thickness)
+    val hexRadius = 9.0f * scale
+    val hexNutBottom = baseZ + 0.3f * scale
+    val hexNutTop = baseZ + 1.8f * scale
+
+    val hexBottomPoints = (0 until 6).map { i ->
+        val angle = (i * 60.0 * Math.PI / 180.0).toFloat()
+        project3D(cx + hexRadius * kotlin.math.cos(angle), cy + hexRadius * kotlin.math.sin(angle), hexNutBottom)
+    }
+    val hexTopPoints = (0 until 6).map { i ->
+        val angle = (i * 60.0 * Math.PI / 180.0).toFloat()
+        project3D(cx + hexRadius * kotlin.math.cos(angle), cy + hexRadius * kotlin.math.sin(angle), hexNutTop)
+    }
+
+    // 3D Hex side faces
+    for (i in 0 until 6) {
+        val next = (i + 1) % 6
+        val sideFace = Path().apply {
+            moveTo(hexBottomPoints[i].x, hexBottomPoints[i].y)
+            lineTo(hexBottomPoints[next].x, hexBottomPoints[next].y)
+            lineTo(hexTopPoints[next].x, hexTopPoints[next].y)
+            lineTo(hexTopPoints[i].x, hexTopPoints[i].y)
+            close()
+        }
+        val sideColor = if (i in 1..3) Color(0xFF78909C) else Color(0xFFB0BEC5)
+        drawPath(path = sideFace, color = sideColor)
+    }
+
+    // Top face of hex nut
+    val hexTopPath = Path().apply {
+        moveTo(hexTopPoints[0].x, hexTopPoints[0].y)
+        for (i in 1 until 6) lineTo(hexTopPoints[i].x, hexTopPoints[i].y)
+        close()
+    }
+    drawPath(path = hexTopPath, color = Color(0xFFECEFF1))
+    drawPath(path = hexTopPath, color = Color(0xFF78909C), style = Stroke(1.2f * scale))
+    // Nut central bushing hole
+    drawCircle(color = Color(0xFF263238), radius = 4.5f * scale, center = project3D(cx, cy, hexNutTop))
+
+    // 5. Solid Volumetric Polished Chrome Bat Lever (Tapered Teardrop Metallic Mesh)
+    // In ASW-23-101: UP is ON (-tiltY), DOWN is OFF (+tiltY)
+    val tiltY = if (isOn) -10f * scale else 10f * scale
+    val leverHeightZ = baseZ + 24f * scale
+    val leverTip = project3D(cx, cy + tiltY, leverHeightZ)
+    val leverBase = project3D(cx, cy, baseZ + 2.0f * scale)
+
+    // Shadow cast by the tilting bat lever
+    val shadowTip = project3D(cx + 5f * scale, cy + tiltY + 5f * scale, baseZ)
+    drawLine(
+        color = Color.Black.copy(alpha = 0.38f),
+        start = swCenter,
+        end = shadowTip,
+        strokeWidth = 5.5f * scale,
+        cap = StrokeCap.Round
+    )
+
+    // Calculate perpendicular 2D screen normal for solid volumetric rendering
+    val dx = leverTip.x - leverBase.x
+    val dy = leverTip.y - leverBase.y
+    val len = kotlin.math.hypot(dx, dy).coerceAtLeast(0.001f)
+    val nx = -dy / len
+    val ny = dx / len
+
+    // Sculpted bat profile: base collar (rBase), neck (rNeck), bat bulb (rBulb), tip (rTip)
+    val rBase = 3.2f * scale
+    val rNeck = 2.6f * scale
+    val rBulb = 5.2f * scale
+    val rTip = 4.2f * scale
+
+    // Interpolated control positions along lever axis
+    val pNeck = Offset(leverBase.x + dx * 0.28f, leverBase.y + dy * 0.28f)
+    val pBulb = Offset(leverBase.x + dx * 0.78f, leverBase.y + dy * 0.78f)
+
+    // Facet 1: Left Dark Metallic Shadow Body (Dark Chrome #37474F)
+    val leftFacet = Path().apply {
+        moveTo(leverBase.x - nx * rBase, leverBase.y - ny * rBase)
+        lineTo(pNeck.x - nx * rNeck, pNeck.y - ny * rNeck)
+        lineTo(pBulb.x - nx * rBulb, pBulb.y - ny * rBulb)
+        lineTo(leverTip.x - nx * rTip, leverTip.y - ny * rTip)
+        lineTo(leverTip.x, leverTip.y)
+        lineTo(pBulb.x, pBulb.y)
+        lineTo(pNeck.x, pNeck.y)
+        lineTo(leverBase.x, leverBase.y)
+        close()
+    }
+    drawPath(path = leftFacet, color = Color(0xFF37474F))
+
+    // Facet 2: Right Polished Chrome Body (Chrome #ECEFF1)
+    val rightFacet = Path().apply {
+        moveTo(leverBase.x, leverBase.y)
+        lineTo(pNeck.x, pNeck.y)
+        lineTo(pBulb.x, pBulb.y)
+        lineTo(leverTip.x, leverTip.y)
+        lineTo(leverTip.x + nx * rTip, leverTip.y + ny * rTip)
+        lineTo(pBulb.x + nx * rBulb, pBulb.y + ny * rBulb)
+        lineTo(pNeck.x + nx * rNeck, pNeck.y + ny * rNeck)
+        lineTo(leverBase.x + nx * rBase, leverBase.y + ny * rBase)
+        close()
+    }
+    drawPath(path = rightFacet, color = Color(0xFFCFD8DC))
+
+    // Facet 3: Bright Center Specular Highlight Strip (#FFFFFF)
+    val highlightStrip = Path().apply {
+        moveTo(leverBase.x + nx * 0.4f * scale, leverBase.y + ny * 0.4f * scale)
+        lineTo(pNeck.x + nx * 0.5f * scale, pNeck.y + ny * 0.5f * scale)
+        lineTo(pBulb.x + nx * 0.8f * scale, pBulb.y + ny * 0.8f * scale)
+        lineTo(leverTip.x + nx * 0.6f * scale, leverTip.y + ny * 0.6f * scale)
+        lineTo(leverTip.x + nx * 1.8f * scale, leverTip.y + ny * 1.8f * scale)
+        lineTo(pBulb.x + nx * 2.2f * scale, pBulb.y + ny * 2.2f * scale)
+        lineTo(pNeck.x + nx * 1.4f * scale, pNeck.y + ny * 1.4f * scale)
+        lineTo(leverBase.x + nx * 1.2f * scale, leverBase.y + ny * 1.2f * scale)
+        close()
+    }
+    drawPath(path = highlightStrip, color = Color.White.copy(alpha = 0.90f))
+
+    // 6. Volumetric Spherical Bat Lever Cap at the Tip
+    drawCircle(color = Color(0xFF263238), radius = rTip + 0.6f * scale, center = leverTip)
+    drawCircle(color = Color(0xFFB0BEC5), radius = rTip, center = leverTip)
+    drawCircle(color = Color(0xFFECEFF1), radius = rTip * 0.82f, center = Offset(leverTip.x + nx * 0.8f * scale, leverTip.y + ny * 0.8f * scale))
+    drawCircle(color = Color.White, radius = 2.2f * scale, center = Offset(leverTip.x + nx * 1.4f * scale - 1f, leverTip.y + ny * 1.4f * scale - 1f))
+
+    // 7. Active State Silkscreen Indicator Glow
+    if (isOn) {
+        drawCircle(
+            color = Color(0xFF00E676).copy(alpha = 0.65f),
+            radius = hexRadius + 3.5f * scale,
+            center = swCenter,
+            style = Stroke(1.6f * scale)
+        )
+    }
+}
+
+/**
+ * Authentic 3D Through-Hole 5mm LED Diode based on physical reference photography:
+ * - Dual tin/silver rectangular wire leads with stamped leadframe shoulder crimps.
+ * - Circular base flange collar (lip ring) with cathode flat indexing notch.
+ * - Transparent/translucent optical epoxy barrel cylinder with lateral refraction.
+ * - Visible internal leadframe:
+ *     * Large trapezoidal reflective metal ANVIL on the cathode side
+ *     * Deep conical DIE CUP inside the anvil
+ *     * Microscopic semiconductor LED die chip seated in the cup
+ *     * Slender vertical POST on the anode side
+ *     * Arched microscopic gold BOND WIRE bridging from post to die
+ * - Hemispherical optical dome lens top with dual glass specular highlights.
+ * - Photonic emission states:
+ *     * OFF: Crystal clear transparent tinted epoxy with visible leadframe.
+ *     * ON: Blinding core die luminescence, internal diffusion, and multi-tier radial photonic bloom aura.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.draw3DThroughHoleLEDDiode(
+    cx: Float,
+    cy: Float,
+    isLit: Boolean,
+    colorTint: Color = Color(0xFFFF1744), // Brilliant Red by default, or Blue/Green
+    scale: Float = 1.0f,
+    baseZ: Float = 0.5f,
+    showLeads: Boolean = true,
+    label: String = "LED",
+    project3D: (Float, Float, Float) -> Offset
+) {
+    // 1. Through-Hole Metal Wire Leads descending directly into PCB solder pads / breadboard tie points
+    if (showLeads) {
+        val cathodeX = cx - 4.2f * scale
+        val anodeX = cx + 4.2f * scale
+
+        // Solder Annular Pads on Board
+        val padCathode = project3D(cathodeX, cy, 0f)
+        val padAnode = project3D(anodeX, cy, 0f)
+        listOf(padCathode, padAnode).forEach { p ->
+            drawCircle(color = Color(0xFFD4AF37), radius = 3.8f * scale, center = p)
+            drawCircle(color = Color(0xFFECEFF1), radius = 3.0f * scale, center = p)
+            drawCircle(color = Color(0xFF1E2124), radius = 1.6f * scale, center = p)
+        }
+
+        // Stamped Shoulder Crimps (Kinks in through-hole leadframes)
+        val leadC0 = project3D(cathodeX, cy, 0f)
+        val leadC1 = project3D(cathodeX, cy, 2.5f * scale)
+        val leadC2 = project3D(cathodeX - 1.4f * scale, cy, 3.8f * scale)
+        val leadC3 = project3D(cathodeX, cy, baseZ + 5.0f * scale)
+
+        val leadA0 = project3D(anodeX, cy, 0f)
+        val leadA1 = project3D(anodeX, cy, 2.5f * scale)
+        val leadA2 = project3D(anodeX + 1.4f * scale, cy, 3.8f * scale)
+        val leadA3 = project3D(anodeX, cy, baseZ + 5.0f * scale)
+
+        // Cathode Lead Path
+        val cLeadPath = Path().apply {
+            moveTo(leadC0.x, leadC0.y)
+            lineTo(leadC1.x, leadC1.y)
+            lineTo(leadC2.x, leadC2.y)
+            lineTo(leadC3.x, leadC3.y)
+        }
+        drawPath(path = cLeadPath, color = Color(0xFF546E7A), style = Stroke(2.8f * scale, cap = StrokeCap.Round))
+        drawPath(path = cLeadPath, color = Color(0xFFCFD8DC), style = Stroke(1.8f * scale, cap = StrokeCap.Round))
+
+        // Anode Lead Path
+        val aLeadPath = Path().apply {
+            moveTo(leadA0.x, leadA0.y)
+            lineTo(leadA1.x, leadA1.y)
+            lineTo(leadA2.x, leadA2.y)
+            lineTo(leadA3.x, leadA3.y)
+        }
+        drawPath(path = aLeadPath, color = Color(0xFF546E7A), style = Stroke(2.8f * scale, cap = StrokeCap.Round))
+        drawPath(path = aLeadPath, color = Color(0xFFCFD8DC), style = Stroke(1.8f * scale, cap = StrokeCap.Round))
+    }
+
+    // 2. Under-Diode Ambient Ground Glow Pool on Substrate
+    val gndCenter = project3D(cx, cy, 0.2f)
+    if (isLit) {
+        drawCircle(color = colorTint.copy(alpha = 0.25f), radius = 34f * scale, center = gndCenter)
+        drawCircle(color = colorTint.copy(alpha = 0.60f), radius = 17f * scale, center = gndCenter)
+    }
+
+    // 3. LED Base Flange Collar (Lip Ring with Cathode Flat Index Notch)
+    val flangeZ = baseZ + 5.2f * scale
+    val flangeCenter = project3D(cx, cy, flangeZ)
+    val flangeRadius = 10.5f * scale
+
+    // Flange Body with flat notch on left (cathode) side
+    val flangePath = Path()
+    val numFlangeSegments = 24
+    var firstPoint = true
+    for (i in 0 until numFlangeSegments) {
+        val angle = (i * 360.0 / numFlangeSegments * Math.PI / 180.0).toFloat()
+        var fx = cx + flangeRadius * kotlin.math.cos(angle)
+        val fy = cy + flangeRadius * kotlin.math.sin(angle)
+        // Flat chord on cathode side (x < cx - flangeRadius * 0.72f)
+        if (fx < cx - flangeRadius * 0.72f) {
+            fx = cx - flangeRadius * 0.72f
+        }
+        val fp = project3D(fx, fy, flangeZ)
+        if (firstPoint) {
+            flangePath.moveTo(fp.x, fp.y)
+            firstPoint = false
+        } else {
+            flangePath.lineTo(fp.x, fp.y)
+        }
+    }
+    flangePath.close()
+
+    val flangeColor = if (isLit) colorTint.copy(alpha = 0.88f) else Color(0xFF4A0810)
+    drawPath(path = flangePath, color = flangeColor)
+    drawPath(path = flangePath, color = Color(0xFF263238), style = Stroke(1.2f * scale))
+
+    // 4. Cylindrical Transparent Epoxy Barrel Body
+    val barrelZ = baseZ + 12f * scale
+    val barrelCenter = project3D(cx, cy, barrelZ)
+    val barrelRadius = 8.8f * scale
+    val barrelColor = if (isLit) colorTint.copy(alpha = 0.95f) else Color(0xFF40050B)
+    drawCircle(color = barrelColor, radius = barrelRadius, center = barrelCenter)
+    drawCircle(color = Color(0xFF1E2124).copy(alpha = 0.6f), radius = barrelRadius, center = barrelCenter, style = Stroke(1.1f * scale))
+
+    // 5. VISIBLE INTERNAL LEADFRAME (Inside Transparent Epoxy Resin)
+    val leadframeZ = baseZ + 11.5f * scale
+    val anvilStem = project3D(cx - 3.2f * scale, cy, leadframeZ - 3.5f * scale)
+    val anvilTop = project3D(cx - 1.2f * scale, cy, leadframeZ + 3.0f * scale)
+    val anvilLeft = project3D(cx - 4.5f * scale, cy, leadframeZ + 2.5f * scale)
+    val anvilRight = project3D(cx + 0.6f * scale, cy, leadframeZ + 2.5f * scale)
+
+    // Stamped Metal Anvil Flag (Cathode)
+    val anvilPath = Path().apply {
+        moveTo(anvilStem.x, anvilStem.y)
+        lineTo(anvilLeft.x, anvilLeft.y)
+        lineTo(anvilTop.x, anvilTop.y)
+        lineTo(anvilRight.x, anvilRight.y)
+        close()
+    }
+    drawPath(path = anvilPath, color = Color(0xFF90A4AE))
+    drawPath(path = anvilPath, color = Color(0xFFECEFF1), style = Stroke(0.8f * scale))
+
+    // Reflective Die Cup Cavity inside the Anvil
+    val dieCupCenter = project3D(cx - 1.2f * scale, cy, leadframeZ + 2.0f * scale)
+    drawCircle(color = Color(0xFF546E7A), radius = 2.4f * scale, center = dieCupCenter)
+    drawCircle(color = Color(0xFFCFD8DC), radius = 2.0f * scale, center = dieCupCenter, style = Stroke(0.6f * scale))
+
+    // Semiconductor LED Silicon Die Chip
+    val dieChipColor = if (isLit) Color.White else Color(0xFF263238)
+    drawCircle(color = dieChipColor, radius = 1.4f * scale, center = dieCupCenter)
+
+    // Anode Post (Vertical Rod on Right)
+    val postBottom = project3D(cx + 3.2f * scale, cy, leadframeZ - 3.5f * scale)
+    val postTop = project3D(cx + 3.2f * scale, cy, leadframeZ + 2.8f * scale)
+    drawLine(color = Color(0xFFB0BEC5), start = postBottom, end = postTop, strokeWidth = 1.8f * scale, cap = StrokeCap.Round)
+
+    // Arched Microscopic Gold Bond Wire (from Post to Die)
+    val wireApex = project3D(cx + 1.0f * scale, cy, leadframeZ + 4.2f * scale)
+    val bondWirePath = Path().apply {
+        moveTo(postTop.x, postTop.y)
+        quadraticBezierTo(wireApex.x, wireApex.y, dieCupCenter.x, dieCupCenter.y)
+    }
+    drawPath(path = bondWirePath, color = Color(0xFFFFD54F), style = Stroke(0.9f * scale))
+
+    // 6. Hemispherical Optical Dome Top
+    val domeZ = baseZ + 19.5f * scale
+    val domeCenter = project3D(cx, cy, domeZ)
+    val domeRadius = 9.4f * scale
+
+    if (isLit) {
+        // Multi-tier Photonic Radiant Bloom Aura
+        drawCircle(color = colorTint.copy(alpha = 0.22f), radius = 36f * scale, center = domeCenter)
+        drawCircle(color = colorTint.copy(alpha = 0.55f), radius = 22f * scale, center = domeCenter)
+        drawCircle(color = colorTint, radius = domeRadius, center = domeCenter)
+        // Incandescent Core Luminescence
+        drawCircle(color = Color(0xFFFFCDD2), radius = 4.8f * scale, center = domeCenter)
+        drawCircle(color = Color.White, radius = 2.6f * scale, center = domeCenter)
+
+        // Primary Specular Reflection Crescent Arc
+        drawArc(
+            color = Color.White.copy(alpha = 0.95f),
+            startAngle = -140f,
+            sweepAngle = 90f,
+            useCenter = false,
+            topLeft = Offset(domeCenter.x - domeRadius * 0.72f, domeCenter.y - domeRadius * 0.72f),
+            size = androidx.compose.ui.geometry.Size(domeRadius * 1.44f, domeRadius * 1.44f),
+            style = Stroke(2.2f * scale, cap = StrokeCap.Round)
+        )
+    } else {
+        // Dark Translucent Ruby Epoxy Body
+        drawCircle(color = Color(0xFF4C060E), radius = domeRadius, center = domeCenter)
+
+        // Primary Specular Reflection Highlight Arc
+        drawArc(
+            color = Color.White.copy(alpha = 0.65f),
+            startAngle = -140f,
+            sweepAngle = 80f,
+            useCenter = false,
+            topLeft = Offset(domeCenter.x - domeRadius * 0.72f, domeCenter.y - domeRadius * 0.72f),
+            size = androidx.compose.ui.geometry.Size(domeRadius * 1.44f, domeRadius * 1.44f),
+            style = Stroke(1.6f * scale, cap = StrokeCap.Round)
+        )
+        // Secondary Subtle Rim Glint
+        drawArc(
+            color = Color.White.copy(alpha = 0.25f),
+            startAngle = 40f,
+            sweepAngle = 50f,
+            useCenter = false,
+            topLeft = Offset(domeCenter.x - domeRadius * 0.75f, domeCenter.y - domeRadius * 0.75f),
+            size = androidx.compose.ui.geometry.Size(domeRadius * 1.5f, domeRadius * 1.5f),
+            style = Stroke(1.0f * scale, cap = StrokeCap.Round)
+        )
+    }
+}
+
 @Composable
 fun Circuit3DCanvas(
     components: List<CircuitComponent>,
@@ -853,30 +1352,15 @@ fun Circuit3DCanvas(
                     drawContext.canvas.nativeCanvas.drawText("1", lbl1Pos.x, lbl1Pos.y, trainerPinNumPaint)
                     drawContext.canvas.nativeCanvas.drawText("0", lbl0Pos.x, lbl0Pos.y, trainerPinNumPaint)
 
-                    // Metal Lever Toggle Switch
-                    val swBase = project3D(swX, swY, 1.8f)
-                    val tiltY = if (isSwOn) -5f else 5f // UP is 1, DOWN is 0
-                    val leverTip = project3D(swX, swY + tiltY, 14f)
-
-                    // Threaded Chrome Hex Collar & Bushing
-                    drawCircle(color = Color(0xFF546E7A), radius = 6.8f, center = swBase)
-                    drawCircle(color = Color(0xFFCFD8DC), radius = 5.2f, center = swBase)
-                    drawCircle(color = Color(0xFF263238), radius = 3.4f, center = swBase)
-
-                    // Solid Metal Lever Arm
-                    drawLine(color = Color(0xFF263238), start = swBase, end = leverTip, strokeWidth = 3.6f, cap = StrokeCap.Round)
-                    drawLine(color = Color(0xFFCFD8DC), start = swBase, end = leverTip, strokeWidth = 2.4f, cap = StrokeCap.Round)
-                    drawLine(color = Color.White.copy(alpha = 0.9f), start = swBase, end = leverTip, strokeWidth = 1f, cap = StrokeCap.Round)
-
-                    // Spherical Polished Chrome Bat Tip
-                    drawCircle(color = Color(0xFF455A64), radius = 4.2f, center = leverTip)
-                    drawCircle(color = Color(0xFFECEFF1), radius = 3.4f, center = leverTip)
-                    drawCircle(color = Color.White, radius = 1.2f, center = Offset(leverTip.x - 0.8f, leverTip.y - 0.8f))
-
-                    // Green Glow ring when active (1)
-                    if (isSwOn) {
-                        drawCircle(color = Color(0xFF00E676).copy(alpha = 0.65f), radius = 7f, center = swBase, style = Stroke(1.2f))
-                    }
+                    // Authentic Daier ASW-23-101 Metal Low Voltage Toggle Switch
+                    drawASW23101ToggleSwitch(
+                        cx = swX,
+                        cy = swY,
+                        isOn = isSwOn,
+                        scale = 0.85f,
+                        showChassisBox = false,
+                        project3D = ::project3D
+                    )
 
                     // Silver Turret Binding Post Socket for Patch Cord
                     val sockCenter = project3D(sockX, swY, 1.6f)
@@ -911,35 +1395,27 @@ fun Circuit3DCanvas(
                 val pwrLedX = inX0 + 38f
                 val pwrY = (inBotY + 4f + by1 - 8f) / 2f + 4f
 
-                val pwrBase = project3D(pwrSwX, pwrY, 1.8f)
-                val pwrTiltY = if (isTrainerPowerOn) -5.5f else 5.5f
-                val pwrTip = project3D(pwrSwX, pwrY + pwrTiltY, 14f)
+                // Authentic Daier ASW-23-101 Heavy-Duty Power Toggle Switch
+                drawASW23101ToggleSwitch(
+                    cx = pwrSwX,
+                    cy = pwrY,
+                    isOn = isTrainerPowerOn,
+                    scale = 0.92f,
+                    showChassisBox = false,
+                    project3D = ::project3D
+                )
 
-                // Power switch metal body
-                drawCircle(color = Color(0xFF546E7A), radius = 6.8f, center = pwrBase)
-                drawCircle(color = Color(0xFFCFD8DC), radius = 5.2f, center = pwrBase)
-                drawLine(color = Color(0xFF263238), start = pwrBase, end = pwrTip, strokeWidth = 3.8f, cap = StrokeCap.Round)
-                drawLine(color = Color(0xFFCFD8DC), start = pwrBase, end = pwrTip, strokeWidth = 2.4f, cap = StrokeCap.Round)
-                drawCircle(color = Color(0xFFECEFF1), radius = 3.6f, center = pwrTip)
-
-                // Red Pilot Indicator Lamp
-                val pilotCenter = project3D(pwrLedX, pwrY, 2.8f)
-                val pilotDome = project3D(pwrLedX, pwrY, 6f)
-                drawCircle(color = Color(0xFF37474F), radius = 7f, center = pilotCenter)
-                drawCircle(color = Color(0xFFCFD8DC), radius = 6.2f, center = pilotCenter, style = Stroke(1.2f))
-
-                if (isTrainerPowerOn) {
-                    // Radiant Red Pilot Glow Bloom
-                    drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.28f), radius = 18f, center = pilotDome)
-                    drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.7f), radius = 9f, center = pilotDome)
-                    drawCircle(color = Color(0xFFFF1744), radius = 5f, center = pilotDome)
-                    drawCircle(color = Color(0xFFFFCDD2), radius = 2.2f, center = pilotDome)
-                    drawCircle(color = Color.White, radius = 1f, center = Offset(pilotDome.x - 0.8f, pilotDome.y - 0.8f))
-                } else {
-                    // Dark Unlit Ruby Pilot Lens
-                    drawCircle(color = Color(0xFF52060D), radius = 5f, center = pilotDome)
-                    drawCircle(color = Color.White.copy(alpha = 0.35f), radius = 1.2f, center = Offset(pilotDome.x - 0.8f, pilotDome.y - 0.8f))
-                }
+                // Red Pilot Indicator Lamp (Authentic 3D Through-Hole Red LED Diode)
+                draw3DThroughHoleLEDDiode(
+                    cx = pwrLedX,
+                    cy = pwrY,
+                    isLit = isTrainerPowerOn,
+                    scale = 0.88f,
+                    baseZ = 2.0f,
+                    showLeads = false,
+                    label = "POWER",
+                    project3D = ::project3D
+                )
 
                 val pwrLbl = project3D((inX0 + inX1) / 2f, inBotY + 12f, 0.8f)
                 drawContext.canvas.nativeCanvas.drawText("POWER ON", pwrLbl.x, pwrLbl.y, trainerPinNumPaint)
@@ -1002,60 +1478,17 @@ fun Circuit3DCanvas(
                     val numPos = project3D(outX1 - 7f, ledY + 2f, 0.8f)
                     drawContext.canvas.nativeCanvas.drawText(ledNum, numPos.x, numPos.y, trainerPinNumPaint)
 
-                    // Real 5mm Through-Hole Red Cylindrical Dome LED Diode
-                    val baseCenter = project3D(ledX, ledY, 1.6f)
-                    val flangeCenter = project3D(ledX, ledY, 3.8f)
-                    val barrelCenter = project3D(ledX, ledY, 7.2f)
-                    val domeCenter = project3D(ledX, ledY, 12.5f)
-
-                    // Base Flange Rim
-                    val flangeColor = if (isLit) Color(0xFFFF1744).copy(alpha = 0.9f) else Color(0xFF5A0812)
-                    drawCircle(color = flangeColor, radius = 6.4f, center = flangeCenter)
-                    drawCircle(color = Color(0xFF263238), radius = 6.6f, center = flangeCenter, style = Stroke(0.8f))
-
-                    // Cylindrical Body
-                    val barrelColor = if (isLit) Color(0xFFFF1744) else Color(0xFF4D050B)
-                    drawCircle(color = barrelColor, radius = 5.6f, center = barrelCenter)
-
-                    // Hemispherical Convex Dome
-                    if (isLit) {
-                        // Photonic Radiant Bloom Aura (Bright Red Glowing Diode from photo!)
-                        drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.22f), radius = 22f, center = domeCenter)
-                        drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.58f), radius = 12f, center = domeCenter)
-                        drawCircle(color = Color(0xFFFF1744), radius = 6.2f, center = domeCenter)
-                        // Hot incandescent core
-                        drawCircle(color = Color(0xFFFFCDD2), radius = 2.8f, center = domeCenter)
-                        drawCircle(color = Color.White, radius = 1.4f, center = domeCenter)
-                        // Specular gloss arc highlight
-                        drawArc(
-                            color = Color.White.copy(alpha = 0.95f),
-                            startAngle = -135f,
-                            sweepAngle = 90f,
-                            useCenter = false,
-                            topLeft = Offset(domeCenter.x - 4f, domeCenter.y - 4f),
-                            size = androidx.compose.ui.geometry.Size(8f, 8f),
-                            style = Stroke(1.4f, cap = StrokeCap.Round)
-                        )
-                    } else {
-                        // Dark Translucent Ruby Epoxy Body
-                        drawCircle(color = Color(0xFF52060D), radius = 6.2f, center = domeCenter)
-                        // Internal Anvil Silhouette
-                        drawLine(
-                            color = Color(0xFF78909C),
-                            start = Offset(domeCenter.x - 2f, domeCenter.y + 2f),
-                            end = Offset(domeCenter.x + 2f, domeCenter.y - 2f),
-                            strokeWidth = 1.5f
-                        )
-                        drawArc(
-                            color = Color.White.copy(alpha = 0.45f),
-                            startAngle = -135f,
-                            sweepAngle = 80f,
-                            useCenter = false,
-                            topLeft = Offset(domeCenter.x - 4f, domeCenter.y - 4f),
-                            size = androidx.compose.ui.geometry.Size(8f, 8f),
-                            style = Stroke(1.1f, cap = StrokeCap.Round)
-                        )
-                    }
+                    // Authentic 3D Through-Hole Red Cylindrical Dome LED Diode (Faithful to Reference Photo)
+                    draw3DThroughHoleLEDDiode(
+                        cx = ledX,
+                        cy = ledY,
+                        isLit = isLit,
+                        scale = 0.88f,
+                        baseZ = 1.6f,
+                        showLeads = false,
+                        label = ledNum,
+                        project3D = ::project3D
+                    )
                 }
 
                 // =========================================================================================
@@ -1444,8 +1877,23 @@ fun Circuit3DCanvas(
                 drawCircle(color = Color(0xFFECEFF1), radius = 3.5f, center = w3Start)
                 drawCircle(color = Color(0xFFD32F2F), radius = 5.2f, center = w3End)
                 drawCircle(color = Color(0xFFECEFF1), radius = 3.5f, center = w3End)
+
+                // Inline Signal Indicator Red LED Diode on Patch Jumper
+                draw3DThroughHoleLEDDiode(
+                    cx = (centerAreaX0 + colWidth + outX1 - 40f) / 2f,
+                    cy = gateAreaY0 + 12f,
+                    isLit = isTrainerPowerOn,
+                    scale = 0.72f,
+                    baseZ = 20f,
+                    showLeads = false,
+                    label = "",
+                    project3D = ::project3D
+                )
             } else {
-                // Top PCB FR-4 Solder Mask Surface
+                // =========================================================================================
+                // AUTHENTIC 3D SOLDERLESS BREADBOARD & PCB WORKBENCH SUBSTRATE
+                // =========================================================================================
+                // 1. Solderless Breadboard Plastic Surface (Warm Off-White / Ivory Substrate)
                 drawPath(
                     path = Path().apply {
                         moveTo(t0.x, t0.y)
@@ -1454,10 +1902,10 @@ fun Circuit3DCanvas(
                         lineTo(t3.x, t3.y)
                         close()
                     },
-                    color = Color(0xFF133E30)
+                    color = Color(0xFFEFECE6) // Authentic ivory/cream ABS breadboard plastic
                 )
 
-                // Gold/Copper Plated Bevel Perimeter
+                // Aluminum Baseplate Perimeter Rim
                 drawPath(
                     path = Path().apply {
                         moveTo(t0.x, t0.y)
@@ -1466,41 +1914,90 @@ fun Circuit3DCanvas(
                         lineTo(t3.x, t3.y)
                         close()
                     },
-                    color = Color(0xFFD4AF37).copy(alpha = 0.6f),
-                    style = Stroke(width = 1.6f)
+                    color = Color(0xFF90A4AE).copy(alpha = 0.85f),
+                    style = Stroke(width = 2.2f)
                 )
 
-                // 3D PCB Silkscreen Grid Lines (Toggleable)
+                val bWidth = bx1 - bx0
+                val bHeight = by1 - by0
+                val midTroughY = (by0 + by1) / 2f
+
+                // 2. Central IC Divider Trough / Notch (Depression separating row banks A-E and F-J)
+                val trL0 = project3D(bx0 + 20f, midTroughY - 7f, 0.2f)
+                val trR0 = project3D(bx1 - 20f, midTroughY - 7f, 0.2f)
+                val trR1 = project3D(bx1 - 20f, midTroughY + 7f, 0.2f)
+                val trL1 = project3D(bx0 + 20f, midTroughY + 7f, 0.2f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(trL0.x, trL0.y)
+                        lineTo(trR0.x, trR0.y)
+                        lineTo(trR1.x, trR1.y)
+                        lineTo(trL1.x, trL1.y)
+                        close()
+                    },
+                    color = Color(0xFFCFD8DC) // Recessed divider channel
+                )
+                drawLine(color = Color(0xFF90A4AE), start = trL0, end = trR0, strokeWidth = 1f)
+                drawLine(color = Color(0xFF90A4AE), start = trL1, end = trR1, strokeWidth = 1f)
+
+                // 3. Power Distribution Bus Rails (Top & Bottom Red/Blue Lines)
+                // Top Power Rail (Red +VCC, Blue -GND)
+                val topRedA = project3D(bx0 + 30f, by0 + 22f, 0.4f)
+                val topRedB = project3D(bx1 - 30f, by0 + 22f, 0.4f)
+                drawLine(color = Color(0xFFFF1744).copy(alpha = 0.85f), start = topRedA, end = topRedB, strokeWidth = 2.2f)
+
+                val topBlueA = project3D(bx0 + 30f, by0 + 34f, 0.4f)
+                val topBlueB = project3D(bx1 - 30f, by0 + 34f, 0.4f)
+                drawLine(color = Color(0xFF1E88E5).copy(alpha = 0.85f), start = topBlueA, end = topBlueB, strokeWidth = 2.2f)
+
+                // Bottom Power Rail (Red +VCC, Blue -GND)
+                val botBlueA = project3D(bx0 + 30f, by1 - 34f, 0.4f)
+                val botBlueB = project3D(bx1 - 30f, by1 - 34f, 0.4f)
+                drawLine(color = Color(0xFF1E88E5).copy(alpha = 0.85f), start = botBlueA, end = botBlueB, strokeWidth = 2.2f)
+
+                val botRedA = project3D(bx0 + 30f, by1 - 22f, 0.4f)
+                val botRedB = project3D(bx1 - 30f, by1 - 22f, 0.4f)
+                drawLine(color = Color(0xFFFF1744).copy(alpha = 0.85f), start = botRedA, end = botRedB, strokeWidth = 2.2f)
+
+                // 4. Solderless Breadboard Tie-Point Contact Pin Grid (Square holes with silver spring clips)
                 if (showPcbGrid) {
-                    val gridStep = 40f
-                    var gx = bx0 + gridStep
-                    while (gx < bx1) {
-                        val pA = project3D(gx, by0, 0f)
-                        val pB = project3D(gx, by1, 0f)
-                        drawLine(
-                            color = Color(0xFF1C5240).copy(alpha = 0.5f),
-                            start = pA,
-                            end = pB,
-                            strokeWidth = 0.9f
-                        )
-                        gx += gridStep
-                    }
-                    var gy = by0 + gridStep
-                    while (gy < by1) {
-                        val pA = project3D(bx0, gy, 0f)
-                        val pB = project3D(bx1, gy, 0f)
-                        drawLine(
-                            color = Color(0xFF1C5240).copy(alpha = 0.5f),
-                            start = pA,
-                            end = pB,
-                            strokeWidth = 0.9f
-                        )
-                        gy += gridStep
+                    val tieStepX = 35f
+                    val tieStepY = 28f
+                    var tx = bx0 + 40f
+                    var colNum = 1
+                    while (tx < bx1 - 35f) {
+                        // Tie point rows in top bank (rows A-E) and bottom bank (rows F-J)
+                        listOf(
+                            by0 + 52f, by0 + 52f + tieStepY, by0 + 52f + tieStepY * 2f,
+                            midTroughY + 18f, midTroughY + 18f + tieStepY, midTroughY + 18f + tieStepY * 2f
+                        ).forEach { ty ->
+                            val tp = project3D(tx, ty, 0.3f)
+                            // Square contact hole with nickel silver spring clip inside
+                            drawRect(
+                                color = Color(0xFF263238),
+                                topLeft = Offset(tp.x - 2.5f, tp.y - 2.5f),
+                                size = androidx.compose.ui.geometry.Size(5f, 5f)
+                            )
+                            drawRect(
+                                color = Color(0xFFCFD8DC),
+                                topLeft = Offset(tp.x - 1.2f, tp.y - 1.2f),
+                                size = androidx.compose.ui.geometry.Size(2.4f, 2.4f)
+                            )
+                        }
+
+                        // Column number silkscreen (1, 5, 10, 15...)
+                        if (colNum % 5 == 1) {
+                            val colLblPos = project3D(tx, midTroughY + 3f, 0.5f)
+                            drawContext.canvas.nativeCanvas.drawText("$colNum", colLblPos.x, colLblPos.y, trainerPinNumPaint)
+                        }
+
+                        tx += tieStepX
+                        colNum += 5
                     }
                 }
 
-                // Silkscreen text
-                drawContext.canvas.nativeCanvas.drawText("LOGICLAB CAD • 3D PCB ENGINE", t0.x + 10f, t0.y + 18f, gridTextPaint)
+                // Breadboard Header Silkscreen Brand
+                drawContext.canvas.nativeCanvas.drawText("LOGICLAB CAD • 3D BREADBOARD & PCB WORKBENCH", t0.x + 14f, t0.y + 18f, gridTextPaint)
             }
         }
 
@@ -1891,57 +2388,20 @@ fun Circuit3DCanvas(
                 // Component specific 3D physical widgets
                 when (comp.type) {
                     "SWITCH" -> {
-                        // Realistic Standalone Metal Lever / Toggle Switch Mounted on PCB
-                        val swBase = project3D(comp.x + w / 2f, comp.y + h / 2f, 1.5f)
-                        val tiltY = if (comp.switchState) 14f else -14f
-                        val leverTip = project3D(comp.x + w / 2f, comp.y + h / 2f + tiltY, 26f)
-
-                        // 1. Threaded Chrome Hex Mounting Nut & Bushing Collar
-                        drawCircle(color = Color(0xFF546E7A), radius = 15f, center = swBase)
-                        drawCircle(color = Color(0xFFCFD8DC), radius = 12.5f, center = swBase)
-                        drawCircle(color = Color(0xFF263238), radius = 8.5f, center = swBase)
-                        drawCircle(color = Color(0xFFB0BEC5), radius = 6.2f, center = swBase)
-
-                        // 2. Solid Metal Lever Bat with Shaded Chrome Cylindrical Body
-                        // Dark cast shadow under bat
-                        drawLine(
-                            color = Color(0xFF37474F),
-                            start = swBase,
-                            end = leverTip,
-                            strokeWidth = 7f,
-                            cap = StrokeCap.Round
-                        )
-                        // Main chrome metallic body
-                        drawLine(
-                            color = Color(0xFFCFD8DC),
-                            start = swBase,
-                            end = leverTip,
-                            strokeWidth = 5.2f,
-                            cap = StrokeCap.Round
-                        )
-                        // Specular white highlight along top edge
-                        drawLine(
-                            color = Color.White.copy(alpha = 0.95f),
-                            start = swBase,
-                            end = leverTip,
-                            strokeWidth = 1.8f,
-                            cap = StrokeCap.Round
+                        // Authentic Daier ASW-23-101 Metal Low Voltage Toggle Switch Mounted on PCB
+                        val switchCenterX = comp.x + w / 2f
+                        val switchCenterY = comp.y + h / 2f
+                        drawASW23101ToggleSwitch(
+                            cx = switchCenterX,
+                            cy = switchCenterY,
+                            isOn = comp.switchState,
+                            scale = 1.25f,
+                            showChassisBox = true,
+                            project3D = ::project3D
                         )
 
-                        // 3. Spherical Polished Chrome Bat Tip with Specular Glint
-                        drawCircle(color = Color(0xFF455A64), radius = 8.2f, center = leverTip)
-                        drawCircle(color = Color(0xFFECEFF1), radius = 7f, center = leverTip)
-                        drawCircle(color = Color.White, radius = 2.8f, center = Offset(leverTip.x - 2f, leverTip.y - 2f))
-
-                        // Active State Status Collar Ring
-                        if (comp.switchState) {
-                            drawCircle(color = Color(0xFF00E676).copy(alpha = 0.55f), radius = 12f, center = swBase, style = Stroke(width = 2.5f))
-                            drawCircle(color = Color(0xFF00E676), radius = 3.8f, center = leverTip)
-                        } else {
-                            drawCircle(color = Color(0xFF37474F), radius = 3f, center = leverTip)
-                        }
-
-                        // Physical ON/OFF Engraved Silkscreen Marker
+                        // Status Silkscreen Readout
+                        val swBase = project3D(switchCenterX, switchCenterY, 8.5f * 1.25f)
                         val statusText = if (comp.switchState) "1 (ON)" else "0 (OFF)"
                         val statusPaint = Paint().apply {
                             color = if (comp.switchState) android.graphics.Color.rgb(0, 230, 118) else android.graphics.Color.LTGRAY
@@ -1949,114 +2409,44 @@ fun Circuit3DCanvas(
                             typeface = Typeface.MONOSPACE
                             textAlign = Paint.Align.CENTER
                         }
-                        drawContext.canvas.nativeCanvas.drawText(statusText, swBase.x, swBase.y + 22f, statusPaint)
+                        drawContext.canvas.nativeCanvas.drawText(statusText, swBase.x, swBase.y + 24f, statusPaint)
                     }
-                    "LED" -> {
-                        // Authentic 5mm Through-Hole Red Cylindrical Dome LED Diode
+                    "LED", "DIODE" -> {
+                        // Authentic 5mm Through-Hole Red Cylindrical Dome LED Diode (with internal leadframe, anvil, post, die cup, and bond wire)
                         val isHigh = comp.inputValues.values.any { it == DigitalState.HIGH }
                         val diodeCenter = Offset(comp.x + w / 2f, comp.y + h / 2f)
 
-                        // 1. Through-Hole Metal Wire Leads descending directly into PCB solder pads
-                        val leadL1 = project3D(diodeCenter.x - 5f, diodeCenter.y, 0.5f)
-                        val leadL2 = project3D(diodeCenter.x + 5f, diodeCenter.y, 0.5f)
-                        val leadT1 = project3D(diodeCenter.x - 5f, diodeCenter.y, 5f)
-                        val leadT2 = project3D(diodeCenter.x + 5f, diodeCenter.y, 5f)
-                        drawLine(color = Color(0xFFB0BEC5), start = leadL1, end = leadT1, strokeWidth = 2.4f)
-                        drawLine(color = Color(0xFFB0BEC5), start = leadL2, end = leadT2, strokeWidth = 2.4f)
-
-                        // 2. Under-Diode Ambient Red Glow Pool on PCB when Active
-                        val gndCenter = project3D(diodeCenter.x, diodeCenter.y, 0.5f)
-                        if (isHigh) {
-                            drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.35f), radius = 28f, center = gndCenter)
-                            drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.65f), radius = 15f, center = gndCenter)
-                        }
-
-                        // 3. LED Base Flange Collar (Lip Ring)
-                        val flangeCenter = project3D(diodeCenter.x, diodeCenter.y, 5.5f)
-                        val flangeColor = if (isHigh) Color(0xFFFF1744).copy(alpha = 0.9f) else Color(0xFF5A0812)
-                        drawCircle(color = flangeColor, radius = 12f, center = flangeCenter)
-                        drawCircle(color = Color(0xFF263238), radius = 12.2f, center = flangeCenter, style = Stroke(1.2f))
-
-                        // 4. Cylindrical Red Lens Barrel Body
-                        val barrelCenter = project3D(diodeCenter.x, diodeCenter.y, 11f)
-                        val barrelColor = if (isHigh) Color(0xFFFF1744) else Color(0xFF4D050B)
-                        drawCircle(color = barrelColor, radius = 10.5f, center = barrelCenter)
-
-                        // 5. Hemispherical Convex Dome Top & Internal Semiconductor Die
-                        val domeCenter = project3D(diodeCenter.x, diodeCenter.y, 19f)
-                        if (isHigh) {
-                            // Photonic Radiant Bloom Aura
-                            drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.22f), radius = 34f, center = domeCenter)
-                            drawCircle(color = Color(0xFFFF1744).copy(alpha = 0.55f), radius = 20f, center = domeCenter)
-                            // Vivid Glowing Red Dome
-                            drawCircle(color = Color(0xFFFF1744), radius = 11.5f, center = domeCenter)
-                            // Incandescent White/Pink Core Die
-                            drawCircle(color = Color(0xFFFFCDD2), radius = 5.5f, center = domeCenter)
-                            drawCircle(color = Color.White, radius = 3.2f, center = domeCenter)
-                            // Specular Reflection Curved Highlight
-                            drawArc(
-                                color = Color.White.copy(alpha = 0.95f),
-                                startAngle = -135f,
-                                sweepAngle = 90f,
-                                useCenter = false,
-                                topLeft = Offset(domeCenter.x - 8.5f, domeCenter.y - 8.5f),
-                                size = androidx.compose.ui.geometry.Size(17f, 17f),
-                                style = Stroke(2.2f, cap = StrokeCap.Round)
-                            )
-                        } else {
-                            // Dark Translucent Ruby Epoxy Body
-                            drawCircle(color = Color(0xFF52060D), radius = 11.5f, center = domeCenter)
-                            // Internal Anvil / Cathode Lead Frame Wire Silhouette inside translucent red dome
-                            drawLine(
-                                color = Color(0xFF78909C),
-                                start = Offset(domeCenter.x - 4f, domeCenter.y + 3.5f),
-                                end = Offset(domeCenter.x + 4f, domeCenter.y - 3.5f),
-                                strokeWidth = 2.4f
-                            )
-                            // Soft Specular Gloss Highlight
-                            drawArc(
-                                color = Color.White.copy(alpha = 0.5f),
-                                startAngle = -135f,
-                                sweepAngle = 80f,
-                                useCenter = false,
-                                topLeft = Offset(domeCenter.x - 8.5f, domeCenter.y - 8.5f),
-                                size = androidx.compose.ui.geometry.Size(17f, 17f),
-                                style = Stroke(1.5f, cap = StrokeCap.Round)
-                            )
-                        }
+                        draw3DThroughHoleLEDDiode(
+                            cx = diodeCenter.x,
+                            cy = diodeCenter.y,
+                            isLit = isHigh,
+                            scale = 1.25f,
+                            baseZ = 0.5f,
+                            showLeads = true,
+                            label = "LED",
+                            project3D = ::project3D
+                        )
 
                         // Red LED Silkscreen Label
-                        val ledLblPos = project3D(diodeCenter.x, diodeCenter.y + 18f, 0.8f)
-                        drawContext.canvas.nativeCanvas.drawText("LED", ledLblPos.x, ledLblPos.y, trainerPinNumPaint)
+                        val ledLblPos = project3D(diodeCenter.x, diodeCenter.y + 20f, 0.8f)
+                        drawContext.canvas.nativeCanvas.drawText("DIODE (LED)", ledLblPos.x, ledLblPos.y, trainerPinNumPaint)
                     }
                     "CONST_HIGH", "CONST_LOW" -> {
                         val isHigh = comp.type == "CONST_HIGH"
-                        val swBase = project3D(comp.x + w / 2f, comp.y + h / 2f, 1.5f)
-                        val tiltY = if (isHigh) 12f else -12f
-                        val leverTip = project3D(comp.x + w / 2f, comp.y + h / 2f + tiltY, 24f)
+                        val switchCenterX = comp.x + w / 2f
+                        val switchCenterY = comp.y + h / 2f
 
-                        // Threaded Chrome Hex Mounting Nut
-                        drawCircle(color = Color(0xFF6E7781), radius = 12f, center = swBase)
-                        drawCircle(color = Color(0xFF24292F), radius = 8f, center = swBase)
-                        drawCircle(color = Color(0xFFAFB8C1), radius = 5.5f, center = swBase)
+                        // Authentic ASW-23-101 Heavy Duty Fixed Power Switch
+                        drawASW23101ToggleSwitch(
+                            cx = switchCenterX,
+                            cy = switchCenterY,
+                            isOn = isHigh,
+                            scale = 1.15f,
+                            showChassisBox = true,
+                            project3D = ::project3D
+                        )
 
-                        // Solid Chrome Metal Bat Arm
-                        drawLine(color = Color(0xFF424A53), start = swBase, end = leverTip, strokeWidth = 5.5f, cap = StrokeCap.Round)
-                        drawLine(color = Color(0xFFD0D7DE), start = swBase, end = leverTip, strokeWidth = 4.2f, cap = StrokeCap.Round)
-                        drawLine(color = Color.White.copy(alpha = 0.9f), start = swBase, end = leverTip, strokeWidth = 1.4f, cap = StrokeCap.Round)
-
-                        // Spherical Polished Chrome Bat Tip
-                        drawCircle(color = Color(0xFF57606A), radius = 6.5f, center = leverTip)
-                        drawCircle(color = Color(0xFFF6F8FA), radius = 5.4f, center = leverTip)
-                        drawCircle(color = Color.White, radius = 2f, center = Offset(leverTip.x - 1.4f, leverTip.y - 1.4f))
-
-                        if (isHigh) {
-                            drawCircle(color = SignalHigh.copy(alpha = 0.45f), radius = 9.5f, center = swBase, style = Stroke(width = 2.2f))
-                            drawCircle(color = SignalHigh, radius = 3.2f, center = leverTip)
-                        } else {
-                            drawCircle(color = Color(0xFF38465B), radius = 2.2f, center = leverTip)
-                        }
-
+                        val swBase = project3D(switchCenterX, switchCenterY, 8.5f * 1.15f)
                         val statusText = if (isHigh) "+5V (HIGH)" else "GND (LOW)"
                         val statusPaint = Paint().apply {
                             color = if (isHigh) android.graphics.Color.rgb(0, 230, 118) else android.graphics.Color.LTGRAY
@@ -2064,7 +2454,7 @@ fun Circuit3DCanvas(
                             typeface = Typeface.MONOSPACE
                             textAlign = Paint.Align.CENTER
                         }
-                        drawContext.canvas.nativeCanvas.drawText(statusText, swBase.x, swBase.y + 18f, statusPaint)
+                        drawContext.canvas.nativeCanvas.drawText(statusText, swBase.x, swBase.y + 22f, statusPaint)
                     }
                     "OSCILLATOR" -> {
                         val oscHigh = comp.switchState
@@ -2073,24 +2463,20 @@ fun Circuit3DCanvas(
                     }
                     "DIGITAL_PROBE" -> {
                         val isHigh = comp.inputValues.values.any { it == DigitalState.HIGH }
-                        val probeCenter = project3D(comp.x + w / 2f, comp.y + h / 2f - 4f, chipHeight + 3f)
-                        val domeCenter = project3D(comp.x + w / 2f, comp.y + h / 2f - 4f, chipHeight + 12f)
+                        val probeCenter = Offset(comp.x + w / 2f, comp.y + h / 2f)
 
-                        // 3D LED Diode Bezel Ring
-                        drawCircle(color = Color(0xFF263238), radius = 9f, center = probeCenter)
-                        drawCircle(color = Color(0xFFCFD8DC), radius = 7.5f, center = probeCenter, style = Stroke(1.2f))
-
-                        // Photonic Dome Glow
-                        if (isHigh) {
-                            drawCircle(color = SignalHigh.copy(alpha = 0.22f), radius = 22f, center = domeCenter)
-                            drawCircle(color = SignalHigh.copy(alpha = 0.55f), radius = 13f, center = domeCenter)
-                            drawCircle(color = SignalHigh, radius = 7f, center = domeCenter)
-                            drawCircle(color = Color(0xFFE8FFE8), radius = 3.2f, center = domeCenter)
-                            drawCircle(color = Color.White, radius = 1.6f, center = domeCenter)
-                        } else {
-                            drawCircle(color = Color(0xFF14301B), radius = 7f, center = domeCenter)
-                            drawCircle(color = Color.White.copy(alpha = 0.35f), radius = 1.6f, center = Offset(domeCenter.x - 1.6f, domeCenter.y - 1.6f))
-                        }
+                        // 3D Emerald Probe LED Diode with Internal Leadframe & Bloom
+                        draw3DThroughHoleLEDDiode(
+                            cx = probeCenter.x,
+                            cy = probeCenter.y,
+                            isLit = isHigh,
+                            colorTint = Color(0xFF00E676), // Emerald probe luminescence
+                            scale = 1.15f,
+                            baseZ = 0.5f,
+                            showLeads = true,
+                            label = "PROBE",
+                            project3D = ::project3D
+                        )
 
                         val probeText = if (isHigh) "LOGIC 1" else "LOGIC 0"
                         val pPaint = Paint().apply {

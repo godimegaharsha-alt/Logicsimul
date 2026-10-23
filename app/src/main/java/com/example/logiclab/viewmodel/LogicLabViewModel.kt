@@ -53,7 +53,8 @@ enum class BottomPanelType {
     NONE,
     TRUTH_TABLE,
     DIAGNOSTICS,
-    TIMING_DIAGRAM
+    TIMING_DIAGRAM,
+    OSCILLOSCOPE
 }
 
 data class CircuitSnapshot(
@@ -178,6 +179,58 @@ class LogicLabViewModel(application: Application) : AndroidViewModel(application
 
     fun setOscilloscopeOpen(open: Boolean) {
         _isOscilloscopeOpen.value = open
+        if (open) {
+            _bottomPanel.value = BottomPanelType.OSCILLOSCOPE
+        }
+    }
+
+    // Probed Wires & Wire Waveforms for Live Oscilloscope
+    private val _probedWireIds = MutableStateFlow<Set<String>>(emptySet())
+    val probedWireIds: StateFlow<Set<String>> = _probedWireIds.asStateFlow()
+
+    private val _wireWaveforms = MutableStateFlow<Map<String, List<DigitalState>>>(emptyMap())
+    val wireWaveforms: StateFlow<Map<String, List<DigitalState>>> = _wireWaveforms.asStateFlow()
+
+    fun toggleWireProbe(wireId: String) {
+        val current = _probedWireIds.value.toMutableSet()
+        if (current.contains(wireId)) {
+            current.remove(wireId)
+        } else {
+            if (current.size >= 4) {
+                current.remove(current.first())
+            }
+            current.add(wireId)
+        }
+        _probedWireIds.value = current
+    }
+
+    fun addWireProbe(wireId: String) {
+        val current = _probedWireIds.value.toMutableSet()
+        if (!current.contains(wireId)) {
+            if (current.size >= 4) {
+                current.remove(current.first())
+            }
+            current.add(wireId)
+            _probedWireIds.value = current
+        }
+    }
+
+    fun removeWireProbe(wireId: String) {
+        val current = _probedWireIds.value.toMutableSet()
+        if (current.remove(wireId)) {
+            _probedWireIds.value = current
+        }
+    }
+
+    fun clearWireProbes() {
+        _probedWireIds.value = emptySet()
+    }
+
+    fun openOscilloscopeForWire(wireId: String) {
+        _selectedWireId.value = wireId
+        _selectedComponentId.value = null
+        addWireProbe(wireId)
+        _bottomPanel.value = BottomPanelType.OSCILLOSCOPE
     }
 
     // Simulation Engine Controls
@@ -337,6 +390,14 @@ class LogicLabViewModel(application: Application) : AndroidViewModel(application
         _diagnostics.value = result.diagnostics
         updateTruthTable()
 
+        // Capture wire states for oscilloscope live wave display
+        val currentWireWaves = _wireWaveforms.value.toMutableMap()
+        for (wire in result.wires) {
+            val hist = (currentWireWaves[wire.id] ?: emptyList()).takeLast(80) + wire.state
+            currentWireWaves[wire.id] = hist
+        }
+        _wireWaveforms.value = currentWireWaves
+
         // Sound Engine: Trigger piezo buzzer if any BUZZER component input is active HIGH
         val hasActiveBuzzer = result.components.any { it.type == "BUZZER" && it.inputValues["IN"] == DigitalState.HIGH }
         com.example.logiclab.audio.AudioEngine.setBuzzerActive(hasActiveBuzzer, 620f)
@@ -362,6 +423,14 @@ class LogicLabViewModel(application: Application) : AndroidViewModel(application
             SignalChannel(chName, hist)
         }
         _signalChannels.value = newChannels
+
+        // Also record continuous wire history for oscilloscope
+        val currentWireWaves = _wireWaveforms.value.toMutableMap()
+        for (wire in _wires.value) {
+            val hist = (currentWireWaves[wire.id] ?: emptyList()).takeLast(80) + wire.state
+            currentWireWaves[wire.id] = hist
+        }
+        _wireWaveforms.value = currentWireWaves
     }
 
     fun setTruthTableMode(mode: TruthTableMode) {
@@ -431,6 +500,9 @@ class LogicLabViewModel(application: Application) : AndroidViewModel(application
     fun selectWire(id: String?) {
         _selectedWireId.value = id
         _selectedComponentId.value = null
+        if (id != null && _bottomPanel.value == BottomPanelType.OSCILLOSCOPE) {
+            addWireProbe(id)
+        }
     }
 
     fun toggleSwitch(id: String) {

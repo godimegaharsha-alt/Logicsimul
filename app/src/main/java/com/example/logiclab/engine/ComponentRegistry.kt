@@ -78,6 +78,18 @@ object ComponentRegistry {
                 evaluate = { _, _ -> emptyMap() }
             ),
             ComponentDefinition(
+                type = "DIODE",
+                name = "Semiconductor Diode / LED",
+                category = ComponentCategory.IO,
+                inputs = listOf(inPort("IN", "Anode", 0.5f)),
+                outputs = emptyList(),
+                width = 70f,
+                height = 50f,
+                description = "Authentic 5mm through-hole semiconductor light-emitting diode with internal leadframe, anvil, and die cup.",
+                booleanFormula = "Diode = Forward Biased (HIGH)",
+                evaluate = { _, _ -> emptyMap() }
+            ),
+            ComponentDefinition(
                 type = "DIGITAL_PROBE",
                 name = "Digital Probe",
                 category = ComponentCategory.IO,
