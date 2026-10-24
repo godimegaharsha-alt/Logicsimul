@@ -96,7 +96,14 @@ const server = http.createServer((req, res) => {
   }
 
   res.writeHead(200, headers);
-  fs.createReadStream(filePath).pipe(res);
+  const stream = fs.createReadStream(filePath);
+  stream.on('error', (err) => {
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Server Stream Error');
+    }
+  });
+  stream.pipe(res);
 });
 
 server.listen(PORT, '0.0.0.0', () => {

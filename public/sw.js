@@ -1,5 +1,5 @@
-// LogicLab PWA Service Worker (v2 - Network First for HTML, Cache for Static Assets)
-const CACHE_NAME = 'logiclab-cache-v2';
+// LogicLab PWA Service Worker (v3 - Network First for HTML, Instant Cache Invalidation)
+const CACHE_NAME = 'logiclab-cache-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

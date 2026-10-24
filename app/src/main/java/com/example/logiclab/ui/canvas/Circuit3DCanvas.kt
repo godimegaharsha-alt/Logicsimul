@@ -2224,21 +2224,20 @@ fun Circuit3DCanvas(
             }
         }
 
-            // 3. Render 3D Extruded Integrated Circuits (DIP Packages)
+            // 3. Render 3D Extruded Integrated Circuits & Logic Gate Packages
             // Sort back-to-front for proper depth occlusion
             val sortedComponents = currentComponents.sortedBy { comp ->
                 (comp.x - boardCenter.x) * sinY + (comp.y - boardCenter.y) * cosY
             }
 
-            if (board3DStyle == Board3DStyle.PCB_LAB) {
-                for (comp in sortedComponents) {
+            for (comp in sortedComponents) {
                 val def = ComponentRegistry.get(comp.type)
                 val w = def?.width ?: 64f
                 val h = def?.height ?: 48f
                 val chipHeight = 16f
                 val isSelected = comp.id == currentSelectedId
                 val centerTop = project3D(comp.x + w / 2f, comp.y + h / 2f, chipHeight)
-                val isChip = comp.type != "SWITCH" && comp.type != "LED" && comp.type != "CONST_HIGH" && comp.type != "CONST_LOW"
+                val isChip = comp.type != "SWITCH" && comp.type != "LED" && comp.type != "DIODE" && comp.type != "CONST_HIGH" && comp.type != "CONST_LOW" && comp.type != "DIGITAL_PROBE"
 
                 if (isChip) {
                     // Top face corners
@@ -2247,25 +2246,27 @@ fun Circuit3DCanvas(
                     val ct2 = project3D(comp.x + w, comp.y + h, chipHeight)
                     val ct3 = project3D(comp.x, comp.y + h, chipHeight)
 
-                    // Base corners on PCB
+                    // Base corners on PCB / Breadboard
                     val cb0 = project3D(comp.x, comp.y, 0f)
                     val cb1 = project3D(comp.x + w, comp.y, 0f)
                     val cb2 = project3D(comp.x + w, comp.y + h, 0f)
                     val cb3 = project3D(comp.x, comp.y + h, 0f)
 
-                    // Chip drop shadow on PCB
-                    drawPath(
-                        path = Path().apply {
-                            moveTo(cb0.x, cb0.y + 4f)
-                            lineTo(cb1.x, cb1.y + 4f)
-                            lineTo(cb2.x, cb2.y + 4f)
-                            lineTo(cb3.x, cb3.y + 4f)
-                            close()
-                        },
-                        color = Color.Black.copy(alpha = 0.5f)
-                    )
+                    // Chip drop shadow
+                    if (showDropShadows) {
+                        drawPath(
+                            path = Path().apply {
+                                moveTo(cb0.x, cb0.y + 4f)
+                                lineTo(cb1.x, cb1.y + 4f)
+                                lineTo(cb2.x, cb2.y + 4f)
+                                lineTo(cb3.x, cb3.y + 4f)
+                                close()
+                            },
+                            color = Color.Black.copy(alpha = 0.5f)
+                        )
+                    }
 
-                    // Chrome DIP Metallic Pins
+                    // Chrome DIP Metallic Pins inserted into Breadboard / PCB pads
                     val numPins = 4
                     for (p in 0 until numPins) {
                         val frac = (p + 0.5f) / numPins
@@ -2358,16 +2359,137 @@ fun Circuit3DCanvas(
                     val notchCenter = Offset((ct0.x + ct1.x) / 2f, (ct0.y + ct1.y) / 2f)
                     drawCircle(color = Color(0xFF0A0D11), radius = 3.5f, center = notchCenter)
 
-                    // Chip Text Silkscreen
-                    val textCenter = Offset(
-                        (ct0.x + ct1.x + ct2.x + ct3.x) / 4f,
-                        (ct0.y + ct1.y + ct2.y + ct3.y) / 4f + 3f
-                    )
-                    val labelText = comp.label.ifBlank { def?.name ?: comp.type }
+                    // =========================================================================
+                    // AUTHENTIC 3D LOGIC GATE ANSI SYMBOL & LIVE STATUS PIN INDICATORS
+                    // =========================================================================
+                    val isLogicGate = comp.type in listOf("AND", "OR", "NOT", "NAND", "NOR", "XOR")
+                    if (isLogicGate) {
+                        val gateBoxW = w * 0.44f
+                        val gateBoxH = h * 0.48f
+                        val gLeft = comp.x + w / 2f - gateBoxW / 2f - 2f
+                        val gRight = comp.x + w / 2f + gateBoxW / 2f - 2f
+                        val gTop = comp.y + h / 2f - gateBoxH / 2f + 4f
+                        val gBot = comp.y + h / 2f + gateBoxH / 2f + 4f
+                        val gMidY = (gTop + gBot) / 2f
+
+                        val pGateTopL = project3D(gLeft, gTop, chipHeight + 0.3f)
+                        val pGateBotL = project3D(gLeft, gBot, chipHeight + 0.3f)
+                        val pGateTip = project3D(gRight, gMidY, chipHeight + 0.3f)
+
+                        // Input Pins with Live Logic Status
+                        val inA_State = comp.inputValues["A"] ?: DigitalState.LOW
+                        val inB_State = comp.inputValues["B"] ?: DigitalState.LOW
+                        val out_State = comp.outputValues["Y"] ?: comp.outputValues["OUT"] ?: DigitalState.LOW
+
+                        val inA_Color = if (inA_State == DigitalState.HIGH) Color(0xFF00E676) else Color(0xFF00E5FF)
+                        val inB_Color = if (inB_State == DigitalState.HIGH) Color(0xFF00E676) else Color(0xFF00E5FF)
+                        val out_Color = if (out_State == DigitalState.HIGH) Color(0xFF00E676) else Color(0xFF00E5FF)
+
+                        // Input A Lead & Status Point
+                        val inA0 = project3D(comp.x + 4f, gTop + 3.5f, chipHeight + 0.3f)
+                        val inA1 = project3D(gLeft, gTop + 3.5f, chipHeight + 0.3f)
+                        drawLine(color = inA_Color, start = inA0, end = inA1, strokeWidth = 1.8f)
+                        drawCircle(color = inA_Color, radius = 2.5f, center = inA0)
+
+                        // Input B Lead (if 2-input gate)
+                        if (comp.type != "NOT") {
+                            val inB0 = project3D(comp.x + 4f, gBot - 3.5f, chipHeight + 0.3f)
+                            val inB1 = project3D(gLeft, gBot - 3.5f, chipHeight + 0.3f)
+                            drawLine(color = inB_Color, start = inB0, end = inB1, strokeWidth = 1.8f)
+                            drawCircle(color = inB_Color, radius = 2.5f, center = inB0)
+                        }
+
+                        // Output Y Lead & Status Point
+                        val hasBubble = comp.type == "NAND" || comp.type == "NOR" || comp.type == "NOT"
+                        val outLeadStart = project3D(gRight + if (hasBubble) 6f else 0f, gMidY, chipHeight + 0.3f)
+                        val outLeadEnd = project3D(comp.x + w - 4f, gMidY, chipHeight + 0.3f)
+                        drawLine(color = out_Color, start = outLeadStart, end = outLeadEnd, strokeWidth = 1.8f)
+                        drawCircle(color = out_Color, radius = 2.5f, center = outLeadEnd)
+
+                        // Draw ANSI Logic Gate Symbol
+                        val gateColor = Color.White.copy(alpha = 0.95f)
+                        val gateStroke = Stroke(width = 1.6f, cap = StrokeCap.Round)
+
+                        when (comp.type) {
+                            "AND", "NAND" -> {
+                                val pMidTop = project3D(gLeft + gateBoxW * 0.42f, gTop, chipHeight + 0.3f)
+                                val pMidBot = project3D(gLeft + gateBoxW * 0.42f, gBot, chipHeight + 0.3f)
+                                drawLine(color = gateColor, start = pGateTopL, end = pGateBotL, strokeWidth = 1.6f)
+                                drawLine(color = gateColor, start = pGateTopL, end = pMidTop, strokeWidth = 1.6f)
+                                drawLine(color = gateColor, start = pGateBotL, end = pMidBot, strokeWidth = 1.6f)
+                                val andPath = Path().apply {
+                                    moveTo(pMidTop.x, pMidTop.y)
+                                    quadraticTo(pGateTip.x, pGateTopL.y, pGateTip.x, pGateTip.y)
+                                    quadraticTo(pGateTip.x, pGateBotL.y, pMidBot.x, pMidBot.y)
+                                }
+                                drawPath(andPath, color = gateColor, style = gateStroke)
+                                if (comp.type == "NAND") {
+                                    val bubCenter = project3D(gRight + 3f, gMidY, chipHeight + 0.3f)
+                                    drawCircle(color = gateColor, radius = 2.4f, center = bubCenter, style = Stroke(1.2f))
+                                }
+                            }
+                            "OR", "NOR" -> {
+                                val orPath = Path().apply {
+                                    moveTo(pGateTopL.x, pGateTopL.y)
+                                    quadraticTo(pGateTip.x - 3f, pGateTopL.y + 1f, pGateTip.x, pGateTip.y)
+                                    quadraticTo(pGateTip.x - 3f, pGateBotL.y - 1f, pGateBotL.x, pGateBotL.y)
+                                    val pBackMid = project3D(gLeft + 3f, gMidY, chipHeight + 0.3f)
+                                    quadraticTo(pBackMid.x, pBackMid.y, pGateTopL.x, pGateTopL.y)
+                                }
+                                drawPath(orPath, color = gateColor, style = gateStroke)
+                                if (comp.type == "NOR") {
+                                    val bubCenter = project3D(gRight + 3f, gMidY, chipHeight + 0.3f)
+                                    drawCircle(color = gateColor, radius = 2.4f, center = bubCenter, style = Stroke(1.2f))
+                                }
+                            }
+                            "XOR" -> {
+                                val xorPath = Path().apply {
+                                    moveTo(pGateTopL.x, pGateTopL.y)
+                                    quadraticTo(pGateTip.x - 3f, pGateTopL.y + 1f, pGateTip.x, pGateTip.y)
+                                    quadraticTo(pGateTip.x - 3f, pGateBotL.y - 1f, pGateBotL.x, pGateBotL.y)
+                                    val pBackMid = project3D(gLeft + 3f, gMidY, chipHeight + 0.3f)
+                                    quadraticTo(pBackMid.x, pBackMid.y, pGateTopL.x, pGateTopL.y)
+                                }
+                                drawPath(xorPath, color = gateColor, style = gateStroke)
+                                val pXorTop = project3D(gLeft - 3f, gTop, chipHeight + 0.3f)
+                                val pXorBot = project3D(gLeft - 3f, gBot, chipHeight + 0.3f)
+                                val pXorMid = project3D(gLeft, gMidY, chipHeight + 0.3f)
+                                val xorBack = Path().apply {
+                                    moveTo(pXorTop.x, pXorTop.y)
+                                    quadraticTo(pXorMid.x, pXorMid.y, pXorBot.x, pXorBot.y)
+                                }
+                                drawPath(xorBack, color = gateColor, style = gateStroke)
+                            }
+                            "NOT" -> {
+                                val notPath = Path().apply {
+                                    moveTo(pGateTopL.x, pGateTopL.y)
+                                    lineTo(pGateTip.x, pGateTip.y)
+                                    lineTo(pGateBotL.x, pGateBotL.y)
+                                    close()
+                                }
+                                drawPath(notPath, color = gateColor, style = gateStroke)
+                                val bubCenter = project3D(gRight + 3f, gMidY, chipHeight + 0.3f)
+                                drawCircle(color = gateColor, radius = 2.4f, center = bubCenter, style = Stroke(1.2f))
+                            }
+                        }
+                    }
+
+                    // Part Number Silkscreen Label at Top
+                    val partNumPos = project3D(comp.x + w / 2f, comp.y + 11f, chipHeight + 0.3f)
+                    val partNumText = when (comp.type) {
+                        "AND" -> "7408 AND"
+                        "OR" -> "7432 OR"
+                        "NOT" -> "7404 NOT"
+                        "NAND" -> "7400 NAND"
+                        "NOR" -> "7402 NOR"
+                        "XOR" -> "7486 XOR"
+                        "CLOCK", "OSCILLATOR" -> "NE555 CLK"
+                        else -> comp.label.ifBlank { def?.name ?: comp.type }
+                    }
                     drawContext.canvas.nativeCanvas.drawText(
-                        labelText.take(9),
-                        textCenter.x,
-                        textCenter.y,
+                        partNumText.take(10),
+                        partNumPos.x,
+                        partNumPos.y,
                         chipTextPaint
                     )
                 } else {
@@ -2489,7 +2611,6 @@ fun Circuit3DCanvas(
                     }
                 }
             }
-        }
         }
 
         // ==========================================

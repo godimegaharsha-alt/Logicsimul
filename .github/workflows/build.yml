@@ -45,17 +45,35 @@ jobs:
         name: LogicLab-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
         if-no-files-found: warn
-        retention-days: 1
+        retention-days: 7
       continue-on-error: true
 
-    - name: Publish APK to GitHub Release
+    - name: Package HTML Web Simulator
+      run: |
+        mkdir -p dist-web
+        cp -r public/* dist-web/
+        cd public && zip -r ../dist-web/logiclab-web-bundle.zip . -x "*.apk" || true
+        cd ..
+
+    - name: Upload HTML Web Application Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: LogicLab-Web-HTML
+        path: |
+          public/index.html
+          dist-web/
+        if-no-files-found: warn
+        retention-days: 7
+      continue-on-error: true
+
+    - name: Publish APK and Web Bundle to GitHub Release
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG="v1.0.${{ github.run_number }}"
-        gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk \
+        gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk dist-web/logiclab-web-bundle.zip \
           --title "LogicLab Build #${{ github.run_number }}" \
-          --notes "Automated build of LogicLab CAD & IC Trainer Kit APK. Note: GitHub Releases do not count against Actions artifact storage quotas." \
-          || gh release upload "$TAG" app/build/outputs/apk/debug/app-debug.apk --clobber || true
+          --notes "Automated build of LogicLab CAD, 3D Gate Renderer, IC Trainer Kit APK and Web HTML application." \
+          || gh release upload "$TAG" app/build/outputs/apk/debug/app-debug.apk dist-web/logiclab-web-bundle.zip --clobber || true
       continue-on-error: true

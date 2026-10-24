@@ -816,6 +816,8 @@
           <button class="palette-item" onclick="addCADGate('NOR')">NOR (7402)</button>
           <button class="palette-item" onclick="addCADGate('XOR')">XOR (7486)</button>
           <button class="palette-item" onclick="addCADGate('LED')">🔴 Red LED</button>
+          <button class="palette-item" id="btn-cad-3d" onclick="toggleCAD3DMode()" style="background:#0284C7; font-weight:700; color:#FFF;">🧊 3D Gate View: ON</button>
+          <button class="palette-item" onclick="generateRandomCircuit()" style="background:#059669; font-weight:700; color:#FFF;">⚡ Generate Circuit</button>
           <button class="palette-item" onclick="clearCAD()">🗑️ Clear</button>
         </div>
         <div class="canvas-viewport" style="height: 580px;">
@@ -1775,13 +1777,71 @@
         tCtx.closePath();
         tCtx.fill();
 
+        // DIP Pins on Left and Right sides (Silver leadframes)
+        for (let p = 0; p < 7; p++) {
+          const pinY = 260 + p * 12;
+          const pl0 = project3D(bcx - 17, pinY, 7, cx, cy);
+          const pl1 = project3D(bcx - 14, pinY, 9, cx, cy);
+          const pr0 = project3D(bcx + 14, pinY, 9, cx, cy);
+          const pr1 = project3D(bcx + 17, pinY, 7, cx, cy);
+          tCtx.strokeStyle = '#CFD8DC';
+          tCtx.lineWidth = 1.6 * zoom;
+          tCtx.beginPath(); tCtx.moveTo(pl0.x, pl0.y); tCtx.lineTo(pl1.x, pl1.y); tCtx.stroke();
+          tCtx.beginPath(); tCtx.moveTo(pr0.x, pr0.y); tCtx.lineTo(pr1.x, pr1.y); tCtx.stroke();
+        }
+
         // Pin 1 Index Notch
         const notchP = project3D(bcx, 253, 9.5, cx, cy);
         tCtx.fillStyle = '#374151';
         tCtx.beginPath(); tCtx.arc(notchP.x, notchP.y, 3 * zoom, 0, Math.PI); tCtx.fill();
 
+        // ANSI Logic Gate Symbol on Top Face
+        const symCenter = project3D(bcx, 282, 10, cx, cy);
+        tCtx.strokeStyle = '#00E5FF';
+        tCtx.lineWidth = 1.4 * zoom;
+        tCtx.beginPath();
+        const sw = 9 * zoom, sh = 6 * zoom;
+        if (b === 0 || b === 3) { // AND / NAND
+          tCtx.moveTo(symCenter.x - sw, symCenter.y - sh);
+          tCtx.lineTo(symCenter.x, symCenter.y - sh);
+          tCtx.arc(symCenter.x, symCenter.y, sh, -Math.PI / 2, Math.PI / 2);
+          tCtx.lineTo(symCenter.x - sw, symCenter.y + sh);
+          tCtx.closePath();
+          tCtx.stroke();
+          if (b === 3) { // NAND bubble
+            tCtx.beginPath();
+            tCtx.arc(symCenter.x + sw + 2 * zoom, symCenter.y, 1.8 * zoom, 0, Math.PI * 2);
+            tCtx.stroke();
+          }
+        } else if (b === 1) { // OR
+          tCtx.moveTo(symCenter.x - sw, symCenter.y - sh);
+          tCtx.quadraticCurveTo(symCenter.x, symCenter.y - sh * 0.8, symCenter.x + sw, symCenter.y);
+          tCtx.quadraticCurveTo(symCenter.x, symCenter.y + sh * 0.8, symCenter.x - sw, symCenter.y + sh);
+          tCtx.quadraticCurveTo(symCenter.x - sw * 0.4, symCenter.y, symCenter.x - sw, symCenter.y - sh);
+          tCtx.stroke();
+        } else if (b === 2) { // NOT
+          tCtx.moveTo(symCenter.x - sw, symCenter.y - sh);
+          tCtx.lineTo(symCenter.x + sw * 0.6, symCenter.y);
+          tCtx.lineTo(symCenter.x - sw, symCenter.y + sh);
+          tCtx.closePath();
+          tCtx.stroke();
+          tCtx.beginPath();
+          tCtx.arc(symCenter.x + sw * 0.6 + 2 * zoom, symCenter.y, 1.8 * zoom, 0, Math.PI * 2);
+          tCtx.stroke();
+        } else if (b === 4) { // XOR
+          tCtx.moveTo(symCenter.x - sw, symCenter.y - sh);
+          tCtx.quadraticCurveTo(symCenter.x, symCenter.y - sh * 0.8, symCenter.x + sw, symCenter.y);
+          tCtx.quadraticCurveTo(symCenter.x, symCenter.y + sh * 0.8, symCenter.x - sw, symCenter.y + sh);
+          tCtx.quadraticCurveTo(symCenter.x - sw * 0.4, symCenter.y, symCenter.x - sw, symCenter.y - sh);
+          tCtx.stroke();
+          tCtx.beginPath();
+          tCtx.moveTo(symCenter.x - sw - 2.5 * zoom, symCenter.y - sh);
+          tCtx.quadraticCurveTo(symCenter.x - sw * 0.4 - 2.5 * zoom, symCenter.y, symCenter.x - sw - 2.5 * zoom, symCenter.y + sh);
+          tCtx.stroke();
+        }
+
         // Chip Part Silkscreen
-        const icTextP = project3D(bcx, 302, 10, cx, cy);
+        const icTextP = project3D(bcx, 312, 10, cx, cy);
         tCtx.fillStyle = '#ECEFF1'; tCtx.font = `bold ${Math.round(6.5 * zoom)}px monospace`;
         tCtx.fillText(icNames[b], icTextP.x, icTextP.y);
 
@@ -2023,11 +2083,13 @@
     const cadCanvas = document.getElementById('cadCanvas');
     const cCtx = cadCanvas.getContext('2d');
 
+    let cad3DMode = true;
+
     let cadGates = [
-      { id: 1, type: 'SWITCH', x: 80, y: 120, state: false, name: 'S1' },
-      { id: 2, type: 'SWITCH', x: 80, y: 220, state: false, name: 'S2' },
-      { id: 3, type: 'AND', x: 260, y: 160, inputs: [0, 0], output: 0 },
-      { id: 4, type: 'LED', x: 440, y: 160, state: false, name: 'L1' }
+      { id: 1, type: 'SWITCH', x: 100, y: 130, state: true, name: 'S1' },
+      { id: 2, type: 'SWITCH', x: 100, y: 250, state: true, name: 'S2' },
+      { id: 3, type: 'AND', x: 300, y: 190, inputs: [1, 1], output: 1 },
+      { id: 4, type: 'LED', x: 490, y: 190, state: true, name: 'L1' }
     ];
 
     let cadWires = [
@@ -2037,9 +2099,20 @@
     ];
 
     let selectedGate = null;
-    let dragWire = null;
+    let dragWire = null; // { fromGateId: number, startX: number, startY: number, curX: number, curY: number }
     let isDraggingCAD = false;
     let cadOffsetX = 0, cadOffsetY = 0;
+
+    function toggleCAD3DMode() {
+      cad3DMode = !cad3DMode;
+      const btn = document.getElementById('btn-cad-3d');
+      if (btn) {
+        btn.innerText = cad3DMode ? '🧊 3D Gate View: ON' : '📐 2D Schematic: ON';
+        btn.style.background = cad3DMode ? '#0284C7' : '#334155';
+      }
+      renderCAD();
+      showLaptopToast(cad3DMode ? '🧊 Enabled 3D Volumetric Gate Renderer' : '📐 Enabled 2D ANSI Schematic Mode');
+    }
 
     function resizeCAD() {
       const rect = cadCanvas.getBoundingClientRect();
@@ -2052,40 +2125,410 @@
     }
 
     function addCADGate(type) {
-      const id = Date.now();
-      const x = 120 + Math.random() * 200;
-      const y = 100 + Math.random() * 200;
+      const id = Date.now() + Math.floor(Math.random() * 1000);
+      const gw = cadCanvas.width > 0 ? (cadCanvas.width / (Math.min(window.devicePixelRatio || 1, 2))) : 700;
+      const gh = cadCanvas.height > 0 ? (cadCanvas.height / (Math.min(window.devicePixelRatio || 1, 2))) : 500;
+      const x = 120 + Math.random() * Math.max(120, gw - 280);
+      const y = 90 + Math.random() * Math.max(100, gh - 200);
       cadGates.push({ id, type, x, y, state: false, inputs: [0, 0], output: 0 });
       renderCAD();
+      showLaptopToast(`➕ Added 3D ${type} Gate to Circuit`);
     }
 
     function clearCAD() {
       cadGates = [];
       cadWires = [];
+      dragWire = null;
+      selectedGate = null;
+      renderCAD();
+      showLaptopToast('🗑️ CAD Canvas Cleared');
+    }
+
+    function generateRandomCircuit() {
+      const circuits = [
+        // Half Adder: Inputs S1, S2 -> XOR (Sum) -> L1, AND (Carry) -> L2
+        () => {
+          cadGates = [
+            { id: 101, type: 'SWITCH', x: 80, y: 140, state: true, name: 'A' },
+            { id: 102, type: 'SWITCH', x: 80, y: 260, state: false, name: 'B' },
+            { id: 103, type: 'XOR', x: 280, y: 150, inputs: [1, 0], output: 1 },
+            { id: 104, type: 'AND', x: 280, y: 270, inputs: [1, 0], output: 0 },
+            { id: 105, type: 'LED', x: 480, y: 150, state: true, name: 'SUM' },
+            { id: 106, type: 'LED', x: 480, y: 270, state: false, name: 'CARRY' }
+          ];
+          cadWires = [
+            { from: 101, to: 103, inputIdx: 0 },
+            { from: 102, to: 103, inputIdx: 1 },
+            { from: 101, to: 104, inputIdx: 0 },
+            { from: 102, to: 104, inputIdx: 1 },
+            { from: 103, to: 105, inputIdx: 0 },
+            { from: 104, to: 106, inputIdx: 0 }
+          ];
+          showLaptopToast('⚡ Generated 1-Bit Half Adder Circuit (7486 XOR + 7408 AND)');
+        },
+        // Universal NAND Logic: S1, S2 -> NAND U1 -> NAND Inverter U2 -> L1
+        () => {
+          cadGates = [
+            { id: 201, type: 'SWITCH', x: 80, y: 150, state: true, name: 'S1' },
+            { id: 202, type: 'SWITCH', x: 80, y: 250, state: true, name: 'S2' },
+            { id: 203, type: 'NAND', x: 270, y: 200, inputs: [1, 1], output: 0 },
+            { id: 204, type: 'NAND', x: 440, y: 200, inputs: [0, 0], output: 1 },
+            { id: 205, type: 'LED', x: 590, y: 200, state: true, name: 'AND_OUT' }
+          ];
+          cadWires = [
+            { from: 201, to: 203, inputIdx: 0 },
+            { from: 202, to: 203, inputIdx: 1 },
+            { from: 203, to: 204, inputIdx: 0 },
+            { from: 203, to: 204, inputIdx: 1 },
+            { from: 204, to: 205, inputIdx: 0 }
+          ];
+          showLaptopToast('⚡ Generated Universal NAND Logic Synthesizer (7400)');
+        },
+        // Clock Oscillating Flasher: CLOCK -> NOT -> LED
+        () => {
+          cadGates = [
+            { id: 301, type: 'CLOCK', x: 90, y: 200, state: true, name: '1Hz CLK' },
+            { id: 302, type: 'NOT', x: 280, y: 200, inputs: [1, 0], output: 0 },
+            { id: 303, type: 'LED', x: 460, y: 200, state: false, name: 'PULSE' }
+          ];
+          cadWires = [
+            { from: 301, to: 302, inputIdx: 0 },
+            { from: 302, to: 303, inputIdx: 0 }
+          ];
+          showLaptopToast('⚡ Generated Clocked Digital Oscillator Circuit');
+        }
+      ];
+
+      const idx = Math.floor(Math.random() * circuits.length);
+      circuits[idx]();
       renderCAD();
     }
 
     function simulateCAD() {
+      // 1. Update source components
       cadGates.forEach(g => {
-        if (g.type === 'AND') g.output = (g.inputs[0] && g.inputs[1]) ? 1 : 0;
-        if (g.type === 'OR') g.output = (g.inputs[0] || g.inputs[1]) ? 1 : 0;
-        if (g.type === 'NOT') g.output = g.inputs[0] ? 0 : 1;
-        if (g.type === 'NAND') g.output = (g.inputs[0] && g.inputs[1]) ? 0 : 1;
-        if (g.type === 'NOR') g.output = (g.inputs[0] || g.inputs[1]) ? 0 : 1;
-        if (g.type === 'XOR') g.output = (g.inputs[0] ^ g.inputs[1]) ? 1 : 0;
         if (g.type === 'SWITCH') g.output = g.state ? 1 : 0;
-        if (g.type === 'LED') g.state = g.inputs[0] === 1;
+        if (g.type === 'CLOCK') g.output = clockBlink ? 1 : 0;
       });
 
-      cadWires.forEach(w => {
-        const src = cadGates.find(g => g.id === w.from);
-        const dst = cadGates.find(g => g.id === w.to);
-        if (src && dst) {
-          if (!dst.inputs) dst.inputs = [];
-          dst.inputs[w.inputIdx] = src.output;
-          if (dst.type === 'LED') dst.state = src.output === 1;
+      // 2. Propagate through wires and evaluate gates (run 3 passes for multi-stage propagation)
+      for (let pass = 0; pass < 3; pass++) {
+        cadWires.forEach(w => {
+          const src = cadGates.find(g => g.id === w.from);
+          const dst = cadGates.find(g => g.id === w.to);
+          if (src && dst) {
+            if (!dst.inputs) dst.inputs = [0, 0];
+            dst.inputs[w.inputIdx] = src.output;
+          }
+        });
+
+        cadGates.forEach(g => {
+          if (!g.inputs) g.inputs = [0, 0];
+          const in0 = g.inputs[0] || 0;
+          const in1 = g.inputs[1] || 0;
+
+          if (g.type === 'AND') g.output = (in0 && in1) ? 1 : 0;
+          else if (g.type === 'OR') g.output = (in0 || in1) ? 1 : 0;
+          else if (g.type === 'NOT') g.output = in0 ? 0 : 1;
+          else if (g.type === 'NAND') g.output = (in0 && in1) ? 0 : 1;
+          else if (g.type === 'NOR') g.output = (in0 || in1) ? 0 : 1;
+          else if (g.type === 'XOR') g.output = (in0 ^ in1) ? 1 : 0;
+          else if (g.type === 'LED') g.state = in0 === 1;
+        });
+      }
+    }
+
+    function getGateOutputPin(g) {
+      if (g.type === 'LED') return null;
+      const ox = cad3DMode ? 46 : 35;
+      return { x: g.x + ox, y: g.y };
+    }
+
+    function getGateInputPins(g) {
+      if (g.type === 'SWITCH' || g.type === 'CLOCK') return [];
+      const ix = cad3DMode ? -46 : -35;
+      if (g.type === 'NOT' || g.type === 'LED') {
+        return [{ idx: 0, x: g.x + ix, y: g.y }];
+      }
+      return [
+        { idx: 0, x: g.x + ix, y: g.y - 12 },
+        { idx: 1, x: g.x + ix, y: g.y + 12 }
+      ];
+    }
+
+    function draw3DGatePackage(ctx, g) {
+      const isSelected = selectedGate && selectedGate.id === g.id;
+
+      if (g.type === 'SWITCH') {
+        // 3D Volumetric Toggle Switch
+        // Base Drop Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath(); ctx.ellipse(0, 24, 26, 8, 0, 0, Math.PI * 2); ctx.fill();
+
+        // Switch Chassis Box
+        const grad = ctx.createLinearGradient(-26, -22, 26, 22);
+        grad.addColorStop(0, '#334155');
+        grad.addColorStop(1, '#1E293B');
+        ctx.fillStyle = grad;
+        ctx.strokeStyle = isSelected ? '#00E5FF' : '#475569';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-26, -22, 52, 44, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Hex Mounting Nut
+        ctx.fillStyle = '#94A3B8';
+        ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#475569';
+        ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+
+        // Metal Lever (Angled UP for ON, DOWN for OFF)
+        const tipY = g.state ? -18 : 18;
+        const leverGrad = ctx.createLinearGradient(-4, 0, 4, tipY);
+        leverGrad.addColorStop(0, '#E2E8F0');
+        leverGrad.addColorStop(0.5, '#94A3B8');
+        leverGrad.addColorStop(1, '#CBD5E1');
+        ctx.strokeStyle = leverGrad;
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, tipY); ctx.stroke();
+
+        // Tip Knob
+        ctx.fillStyle = g.state ? '#00E676' : '#EF4444';
+        if (g.state) { ctx.shadowColor = '#00E676'; ctx.shadowBlur = 10; }
+        ctx.beginPath(); ctx.arc(0, tipY, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Label
+        ctx.fillStyle = '#F8FAFC';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(g.name || 'SW', 0, -26);
+        ctx.fillStyle = g.state ? '#00E676' : '#94A3B8';
+        ctx.fillText(g.state ? '1 (5V)' : '0 (0V)', 0, 34);
+
+        // Output pin
+        ctx.fillStyle = g.output ? '#00E676' : '#0284C7';
+        ctx.beginPath(); ctx.arc(46, 0, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2; ctx.stroke();
+        return;
+      }
+
+      if (g.type === 'CLOCK') {
+        // 3D NE555 Clock DIP-8 Package
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath(); ctx.ellipse(0, 24, 28, 8, 0, 0, Math.PI * 2); ctx.fill();
+
+        // Chip Body
+        ctx.fillStyle = '#0F172A';
+        ctx.beginPath(); ctx.roundRect(-28, -22, 56, 44, 4); ctx.fill();
+        ctx.strokeStyle = isSelected ? '#00E5FF' : '#38BDF8';
+        ctx.lineWidth = 1.8; ctx.stroke();
+
+        // Silkscreen text
+        ctx.fillStyle = '#E2E8F0';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('NE555 CLK', 0, -6);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillText('1.0 Hz', 0, 8);
+
+        // Blinking pulse LED
+        ctx.fillStyle = clockBlink ? '#F59E0B' : '#78350F';
+        if (clockBlink) { ctx.shadowColor = '#F59E0B'; ctx.shadowBlur = 12; }
+        ctx.beginPath(); ctx.arc(0, 16, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Output Pin
+        ctx.fillStyle = g.output ? '#00E676' : '#0284C7';
+        ctx.beginPath(); ctx.arc(46, 0, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2; ctx.stroke();
+        return;
+      }
+
+      if (g.type === 'LED') {
+        // 3D Through-Hole Red LED
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath(); ctx.ellipse(0, 22, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
+
+        // Glowing Dome
+        const ledOn = g.state;
+        const ledGrad = ctx.createRadialGradient(-4, -6, 2, 0, 0, 20);
+        if (ledOn) {
+          ledGrad.addColorStop(0, '#FFA4A4');
+          ledGrad.addColorStop(0.4, '#FF1744');
+          ledGrad.addColorStop(1, '#B71C1C');
+          ctx.shadowColor = '#FF1744';
+          ctx.shadowBlur = 20;
+        } else {
+          ledGrad.addColorStop(0, '#5A1A24');
+          ledGrad.addColorStop(1, '#2B0A10');
         }
+        ctx.fillStyle = ledGrad;
+        ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Cathode Rim / Leadframe inside lens
+        ctx.strokeStyle = ledOn ? 'rgba(255, 255, 255, 0.65)' : 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(-5, -5, 5, 0, Math.PI); ctx.stroke();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(g.name || 'LED', 0, 28);
+
+        // Input pin
+        ctx.fillStyle = (g.inputs && g.inputs[0]) ? '#00E676' : '#0284C7';
+        ctx.beginPath(); ctx.arc(-46, 0, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2; ctx.stroke();
+        return;
+      }
+
+      // Logic Gate (AND, OR, NOT, NAND, NOR, XOR): 3D Extruded DIP-14 Package
+      const pw = 42, ph = 26; // Half width & half height
+
+      // Drop Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.roundRect(-pw + 3, -ph + 5, pw * 2, ph * 2, 5);
+      ctx.fill();
+
+      // Extruded 3D Side/Bottom Bevels
+      ctx.fillStyle = '#090D14';
+      ctx.beginPath();
+      ctx.roundRect(-pw, -ph + 4, pw * 2, ph * 2, 5);
+      ctx.fill();
+
+      // Top Face of IC Package
+      const topGrad = ctx.createLinearGradient(-pw, -ph, pw, ph);
+      topGrad.addColorStop(0, '#1E293B');
+      topGrad.addColorStop(1, '#0F172A');
+      ctx.fillStyle = topGrad;
+      ctx.beginPath();
+      ctx.roundRect(-pw, -ph, pw * 2, ph * 2, 5);
+      ctx.fill();
+      ctx.strokeStyle = isSelected ? '#00E5FF' : '#334155';
+      ctx.lineWidth = isSelected ? 2.5 : 1.5;
+      ctx.stroke();
+
+      // Silver Metallic IC Pins on Top & Bottom edges
+      const pinCount = 4;
+      for (let p = 0; p < pinCount; p++) {
+        const px = -pw + 12 + p * (pw * 2 - 24) / (pinCount - 1);
+        // Top Pin Lead
+        ctx.fillStyle = '#CBD5E1';
+        ctx.fillRect(px - 2.5, -ph - 6, 5, 7);
+        // Bottom Pin Lead
+        ctx.fillRect(px - 2.5, ph - 1, 5, 7);
+      }
+
+      // Pin 1 Index Notch on Left Edge
+      ctx.fillStyle = '#0B111B';
+      ctx.beginPath();
+      ctx.arc(-pw, 0, 5, -Math.PI / 2, Math.PI / 2);
+      ctx.fill();
+
+      // Chip Silkscreen Part Number
+      const partNumber = {
+        'AND': '7408 AND',
+        'OR': '7432 OR',
+        'NOT': '7404 NOT',
+        'NAND': '7400 NAND',
+        'NOR': '7402 NOR',
+        'XOR': '7486 XOR'
+      }[g.type] || g.type;
+
+      ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
+      ctx.font = 'bold 8.5px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(partNumber, 0, -ph + 9);
+
+      // ANSI Logic Gate Symbol drawn in glowing laser cyan
+      ctx.strokeStyle = '#00E5FF';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+
+      const gw = 13, gh = 8.5;
+      const cy = 3; // Center vertical offset
+
+      if (g.type === 'AND' || g.type === 'NAND') {
+        ctx.moveTo(-gw, cy - gh);
+        ctx.lineTo(0, cy - gh);
+        ctx.arc(0, cy, gh, -Math.PI / 2, Math.PI / 2);
+        ctx.lineTo(-gw, cy + gh);
+        ctx.closePath();
+        ctx.stroke();
+        if (g.type === 'NAND') {
+          ctx.beginPath();
+          ctx.arc(gw + 2, cy, 2.2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else if (g.type === 'OR' || g.type === 'NOR') {
+        ctx.moveTo(-gw, cy - gh);
+        ctx.quadraticCurveTo(0, cy - gh * 0.85, gw, cy);
+        ctx.quadraticCurveTo(0, cy + gh * 0.85, -gw, cy + gh);
+        ctx.quadraticCurveTo(-gw * 0.35, cy, -gw, cy - gh);
+        ctx.stroke();
+        if (g.type === 'NOR') {
+          ctx.beginPath();
+          ctx.arc(gw + 3.2, cy, 2.2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else if (g.type === 'XOR') {
+        ctx.moveTo(-gw + 3, cy - gh);
+        ctx.quadraticCurveTo(3, cy - gh * 0.85, gw + 3, cy);
+        ctx.quadraticCurveTo(3, cy + gh * 0.85, -gw + 3, cy + gh);
+        ctx.quadraticCurveTo(-gw * 0.35 + 3, cy, -gw + 3, cy - gh);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-gw - 2, cy - gh);
+        ctx.quadraticCurveTo(-gw * 0.35 - 2, cy, -gw - 2, cy + gh);
+        ctx.stroke();
+      } else if (g.type === 'NOT') {
+        ctx.moveTo(-gw, cy - gh);
+        ctx.lineTo(gw * 0.5, cy);
+        ctx.lineTo(-gw, cy + gh);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(gw * 0.5 + 3, cy, 2.2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Input Terminal Pins (Left Side)
+      const inPins = getGateInputPins(g);
+      inPins.forEach((pin, pidx) => {
+        const isHigh = g.inputs && g.inputs[pidx] === 1;
+        // Lead wire from chip edge to pin circle
+        ctx.strokeStyle = '#64748B';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-pw, pin.y - g.y); ctx.lineTo(-46, pin.y - g.y); ctx.stroke();
+
+        ctx.fillStyle = isHigh ? '#00E676' : '#1E293B';
+        if (isHigh) { ctx.shadowColor = '#00E676'; ctx.shadowBlur = 8; }
+        ctx.beginPath(); ctx.arc(-46, pin.y - g.y, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = isHigh ? '#FFFFFF' : '#0284C7';
+        ctx.lineWidth = 1.2; ctx.stroke();
       });
+
+      // Output Terminal Pin (Right Side)
+      const outPin = getGateOutputPin(g);
+      if (outPin) {
+        const isOutHigh = g.output === 1;
+        ctx.strokeStyle = '#64748B';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pw, 0); ctx.lineTo(46, 0); ctx.stroke();
+
+        ctx.fillStyle = isOutHigh ? '#00E676' : '#1E293B';
+        if (isOutHigh) { ctx.shadowColor = '#00E676'; ctx.shadowBlur = 10; }
+        ctx.beginPath(); ctx.arc(46, 0, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = isOutHigh ? '#FFFFFF' : '#0284C7';
+        ctx.lineWidth = 1.2; ctx.stroke();
+      }
     }
 
     function renderCAD() {
@@ -2096,88 +2539,91 @@
 
       cCtx.clearRect(0, 0, w, h);
 
-      // Grid background
-      cCtx.strokeStyle = '#161F2B';
+      // Isometric CAD Grid background
+      cCtx.strokeStyle = '#141D28';
       cCtx.lineWidth = 1;
-      for (let x = 0; x < w; x += 30) {
+      for (let x = 0; x < w; x += 32) {
         cCtx.beginPath(); cCtx.moveTo(x, 0); cCtx.lineTo(x, h); cCtx.stroke();
       }
-      for (let y = 0; y < h; y += 30) {
+      for (let y = 0; y < h; y += 32) {
         cCtx.beginPath(); cCtx.moveTo(0, y); cCtx.lineTo(w, y); cCtx.stroke();
       }
 
-      // Draw Wires
+      // Draw Wires with dynamic glowing signal colors
       cadWires.forEach(w => {
         const src = cadGates.find(g => g.id === w.from);
         const dst = cadGates.find(g => g.id === w.to);
         if (src && dst) {
           const isHigh = src.output === 1;
+          const srcPin = getGateOutputPin(src) || { x: src.x + 40, y: src.y };
+          const inPins = getGateInputPins(dst);
+          const dstPin = (inPins[w.inputIdx] || { x: dst.x - 40, y: dst.y });
+
           cCtx.strokeStyle = isHigh ? '#00E676' : '#1E88E5';
-          cCtx.lineWidth = 3;
+          cCtx.lineWidth = isHigh ? 3.2 : 2.2;
+          if (isHigh) { cCtx.shadowColor = '#00E676'; cCtx.shadowBlur = 9; }
           cCtx.beginPath();
-          cCtx.moveTo(src.x + 40, src.y);
-          const inY = dst.y + (w.inputIdx === 0 ? -10 : 10);
-          cCtx.bezierCurveTo(src.x + 80, src.y, dst.x - 60, inY, dst.x - 30, inY);
+          cCtx.moveTo(srcPin.x, srcPin.y);
+          const midX = (srcPin.x + dstPin.x) / 2;
+          cCtx.bezierCurveTo(midX, srcPin.y, midX, dstPin.y, dstPin.x, dstPin.y);
           cCtx.stroke();
+          cCtx.shadowBlur = 0;
         }
       });
 
-      // Draw Gates
+      // Draw Temporary Wire being dragged by user
+      if (dragWire) {
+        cCtx.strokeStyle = '#00E5FF';
+        cCtx.lineWidth = 2.5;
+        cCtx.setLineDash([5, 5]);
+        cCtx.beginPath();
+        cCtx.moveTo(dragWire.startX, dragWire.startY);
+        cCtx.lineTo(dragWire.curX, dragWire.curY);
+        cCtx.stroke();
+        cCtx.setLineDash([]);
+      }
+
+      // Draw All Gates
       cadGates.forEach(g => {
         cCtx.save();
         cCtx.translate(g.x, g.y);
-
-        if (g.type === 'SWITCH') {
-          cCtx.fillStyle = g.state ? '#00E676' : '#374151';
-          cCtx.fillRect(-25, -20, 50, 40);
-          cCtx.fillStyle = '#FFFFFF';
-          cCtx.font = 'bold 12px monospace';
-          cCtx.textAlign = 'center';
-          cCtx.fillText(g.state ? '1 (ON)' : '0 (OFF)', 0, 5);
-        } else if (g.type === 'LED') {
-          cCtx.fillStyle = g.state ? '#FF1744' : '#450A12';
-          if (g.state) { cCtx.shadowColor = '#FF1744'; cCtx.shadowBlur = 14; }
-          cCtx.beginPath(); cCtx.arc(0, 0, 18, 0, Math.PI * 2); cCtx.fill();
-          cCtx.shadowBlur = 0;
-          cCtx.fillStyle = '#FFFFFF';
-          cCtx.font = 'bold 10px monospace';
-          cCtx.textAlign = 'center';
-          cCtx.fillText(g.name || 'LED', 0, 4);
-        } else {
-          // Logic Gate Box
-          cCtx.fillStyle = '#1E293B';
-          cCtx.strokeStyle = '#388BFD';
-          cCtx.lineWidth = 2;
-          cCtx.fillRect(-30, -25, 60, 50);
-          cCtx.strokeRect(-30, -25, 60, 50);
-
-          cCtx.fillStyle = '#00E5FF';
-          cCtx.font = 'bold 12px monospace';
-          cCtx.textAlign = 'center';
-          cCtx.fillText(g.type, 0, 4);
-
-          // Output Pin
-          cCtx.fillStyle = g.output ? '#00E676' : '#8B949E';
-          cCtx.beginPath(); cCtx.arc(35, 0, 5, 0, Math.PI * 2); cCtx.fill();
-        }
-
+        draw3DGatePackage(cCtx, g);
         cCtx.restore();
       });
     }
 
-    // CAD Mouse Interaction
+    // CAD Mouse Interaction (Move gates, toggle switches, drag wires between pins)
     cadCanvas.addEventListener('mousedown', (e) => {
       const rect = cadCanvas.getBoundingClientRect();
-      const mx = (e.clientX - rect.left) * (cadCanvas.width / rect.width);
-      const my = (e.clientY - rect.top) * (cadCanvas.height / rect.height);
+      const scaleX = cadCanvas.width / rect.width;
+      const scaleY = cadCanvas.height / rect.height;
+      const mx = (e.clientX - rect.left) * scaleX;
+      const my = (e.clientY - rect.top) * scaleY;
 
+      // 1. Check if user clicked an output pin to start wiring
+      for (const g of cadGates) {
+        const outPin = getGateOutputPin(g);
+        if (outPin && Math.hypot(mx - outPin.x, my - outPin.y) < 14) {
+          dragWire = {
+            fromGateId: g.id,
+            startX: outPin.x,
+            startY: outPin.y,
+            curX: mx,
+            curY: my
+          };
+          return;
+        }
+      }
+
+      // 2. Check if user clicked a switch or gate body
       for (let i = cadGates.length - 1; i >= 0; i--) {
         const g = cadGates[i];
-        if (Math.abs(mx - g.x) < 30 && Math.abs(my - g.y) < 25) {
+        if (Math.abs(mx - g.x) < 44 && Math.abs(my - g.y) < 28) {
           if (g.type === 'SWITCH') {
             g.state = !g.state;
             playSwitchSound();
             renderCAD();
+            showLaptopToast(`🎚️ Switch ${g.name || ''} set to ${g.state ? 'HIGH (1 / 5V)' : 'LOW (0 / 0V)'}`);
             return;
           }
           selectedGate = g;
@@ -2190,14 +2636,58 @@
     });
 
     window.addEventListener('mousemove', (e) => {
-      if (!isDraggingCAD || !selectedGate) return;
       const rect = cadCanvas.getBoundingClientRect();
-      selectedGate.x = (e.clientX - rect.left) * (cadCanvas.width / rect.width) - cadOffsetX;
-      selectedGate.y = (e.clientY - rect.top) * (cadCanvas.height / rect.height) - cadOffsetY;
-      renderCAD();
+      if (!rect || rect.width === 0) return;
+      const scaleX = cadCanvas.width / rect.width;
+      const scaleY = cadCanvas.height / rect.height;
+      const mx = (e.clientX - rect.left) * scaleX;
+      const my = (e.clientY - rect.top) * scaleY;
+
+      if (dragWire) {
+        dragWire.curX = mx;
+        dragWire.curY = my;
+        renderCAD();
+        return;
+      }
+
+      if (isDraggingCAD && selectedGate) {
+        selectedGate.x = mx - cadOffsetX;
+        selectedGate.y = my - cadOffsetY;
+        renderCAD();
+      }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
+      if (dragWire) {
+        const rect = cadCanvas.getBoundingClientRect();
+        const scaleX = cadCanvas.width / rect.width;
+        const scaleY = cadCanvas.height / rect.height;
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+
+        // Check if dropped onto any gate input pin
+        for (const g of cadGates) {
+          if (g.id === dragWire.fromGateId) continue;
+          const inPins = getGateInputPins(g);
+          for (const pin of inPins) {
+            if (Math.hypot(mx - pin.x, my - pin.y) < 20) {
+              // Connect wire!
+              // Remove old wire connecting to this input if any
+              cadWires = cadWires.filter(w => !(w.to === g.id && w.inputIdx === pin.idx));
+              cadWires.push({
+                from: dragWire.fromGateId,
+                to: g.id,
+                inputIdx: pin.idx
+              });
+              showLaptopToast(`🔗 Connected Wire to ${g.type} Input ${pin.idx + 1}`);
+              break;
+            }
+          }
+        }
+        dragWire = null;
+        renderCAD();
+      }
+
       isDraggingCAD = false;
       selectedGate = null;
     });
