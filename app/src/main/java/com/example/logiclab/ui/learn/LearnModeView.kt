@@ -123,18 +123,22 @@ fun LearnModeView(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                ) {
                     Text(
                         text = selectedTopic.title.uppercase(),
                         color = LabTextPrimary,
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
                     Text(
                         text = "Digital Electronics Curriculum",
                         color = LabAccentBlue,
-                        fontSize = 12.sp
+                        fontSize = 11.5.sp
                     )
                 }
 
@@ -142,11 +146,20 @@ fun LearnModeView(
                     Button(
                         onClick = { onOpenStarterCircuit(selectedTopic.starterCircuitId!!) },
                         colors = ButtonDefaults.buttonColors(containerColor = LabAccentBlue),
-                        modifier = Modifier.testTag("open_topic_sim_button")
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .height(36.dp)
+                            .testTag("open_topic_sim_button")
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Simulate", fontSize = 12.sp)
+                        Text(
+                            text = "Simulate",
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
             }

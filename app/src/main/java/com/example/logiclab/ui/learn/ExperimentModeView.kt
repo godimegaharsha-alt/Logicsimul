@@ -133,11 +133,20 @@ fun ExperimentModeView(
                     Button(
                         onClick = { onLoadExperimentInSimulator(selectedExp.starterCircuitId!!) },
                         colors = ButtonDefaults.buttonColors(containerColor = LabAccentBlue),
-                        modifier = Modifier.testTag("load_experiment_button")
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .height(36.dp)
+                            .testTag("load_experiment_button")
                     ) {
                         Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Load in Lab", fontSize = 12.sp)
+                        Text(
+                            text = "Load in Lab",
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
             }

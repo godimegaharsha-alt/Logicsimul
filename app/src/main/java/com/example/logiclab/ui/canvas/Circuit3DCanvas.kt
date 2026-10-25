@@ -680,7 +680,7 @@ fun Circuit3DCanvas(
     // Camera Viewport Angles & Transformations
     var yawDeg by remember { mutableFloatStateOf(-35f) }
     var pitchDeg by remember { mutableFloatStateOf(35f) }
-    var zoomScale by remember { mutableFloatStateOf(1.05f) }
+    var zoomScale by remember { mutableFloatStateOf(1.22f) }
     var panOffset by remember { mutableStateOf(Offset.Zero) }
 
     // Detailed 3D Control States
@@ -2880,7 +2880,7 @@ fun Circuit3DCanvas(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(bottom = 8.dp, end = 8.dp),
+                .padding(bottom = 38.dp, end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalAlignment = Alignment.End
         ) {
@@ -3101,7 +3101,7 @@ fun Circuit3DCanvas(
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(bottom = 8.dp, start = 8.dp),
+                .padding(bottom = 38.dp, start = 8.dp),
             color = LabPanelBg.copy(alpha = 0.92f),
             shape = RoundedCornerShape(8.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, LabBorder)

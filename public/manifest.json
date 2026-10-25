@@ -3,7 +3,7 @@
   "short_name": "LogicLab",
   "description": "Professional Digital Electronics Simulator with 2D Schematic CAD and authentic 3D IC Trainer Kit apparatus.",
   "start_url": "/index.html",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#090D12",
   "theme_color": "#0E4A35",
   "orientation": "any",

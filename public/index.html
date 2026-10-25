@@ -34,74 +34,134 @@
       padding: 0;
     }
 
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
       background-color: var(--bg-dark);
       color: var(--text-primary);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       line-height: 1.5;
-      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
-    /* Top Navigation Bar */
+    /* Top Application Control Bar */
     header {
-      background: rgba(17, 23, 32, 0.95);
-      backdrop-filter: blur(12px);
+      background: rgba(17, 23, 32, 0.98);
       border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 200;
-      padding: 0.75rem 1.5rem;
+      padding: 0 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
+      height: 52px;
+      z-index: 200;
+      gap: 0.75rem;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.65rem;
-      font-size: 1.25rem;
+      gap: 0.5rem;
+      font-size: 1.15rem;
       font-weight: 800;
       letter-spacing: -0.5px;
       color: var(--text-primary);
       text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .brand-icon {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       background: linear-gradient(135deg, #00E5FF, #388BFD);
-      border-radius: 8px;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
-      box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+      font-size: 1rem;
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
     }
 
-    .nav-links {
+    .tab-pills {
       display: flex;
-      gap: 1.2rem;
+      background: var(--bg-dark);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      gap: 3px;
       align-items: center;
-      flex-wrap: wrap;
+      overflow-x: auto;
+      max-width: calc(100vw - 360px);
     }
 
-    .nav-links a {
+    .tab-pill {
+      background: transparent;
       color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 0.88rem;
-      font-weight: 500;
-      transition: color 0.2s;
+      border: none;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+      transition: all 0.2s;
     }
 
-    .nav-links a:hover, .nav-links a.active {
+    .tab-pill.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    .tab-pill:hover:not(.active) {
       color: var(--text-primary);
     }
 
     .header-actions {
       display: flex;
-      gap: 0.6rem;
+      gap: 0.4rem;
       align-items: center;
+      flex-shrink: 0;
+    }
+
+    .app-main {
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 52px);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .view-pane {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .scroll-pane {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 1.5rem;
+      background: var(--bg-dark);
     }
 
     .btn {
@@ -274,7 +334,8 @@
     .canvas-viewport {
       position: relative;
       width: 100%;
-      height: 640px;
+      height: 100%;
+      flex: 1;
       background: #06090D;
       display: flex;
       justify-content: center;
@@ -689,99 +750,55 @@
 </head>
 <body>
 
-  <!-- Top Navigation Header -->
+  <!-- Top Application Control Bar -->
   <header>
-    <a href="#" class="brand">
+    <a href="#" class="brand" onclick="switchMainTab('trainer'); return false;">
       <div class="brand-icon">⚡</div>
       <span>LogicLab CAD</span>
     </a>
-    <div class="nav-links">
-      <a href="#workbench" onclick="switchMainTab('trainer')">3D IC Trainer</a>
-      <a href="#workbench" onclick="switchMainTab('cad')">2D Schematic CAD</a>
-      <a href="#workbench" onclick="switchMainTab('oscilloscope')">Live Oscilloscope</a>
-      <a href="#workbench" onclick="switchMainTab('experiments')">Lab Experiments</a>
-      <a href="#workbench" onclick="switchMainTab('truth-table')">Truth Table</a>
-      <a href="#workbench" onclick="switchMainTab('encyclopedia')">IC Pinouts</a>
-      <a href="#reference">Hardware Reference</a>
-      <a href="#laptop">Laptop / PC Guide</a>
+
+    <div class="tab-pills">
+      <button class="tab-pill active" id="tab-btn-trainer" onclick="switchMainTab('trainer')">
+        🎛️ 3D IC Trainer Kit
+      </button>
+      <button class="tab-pill" id="tab-btn-cad" onclick="switchMainTab('cad')">
+        📐 3D Schematic CAD Lab
+      </button>
+      <button class="tab-pill" id="tab-btn-oscilloscope" onclick="switchMainTab('oscilloscope')">
+        📈 Live Oscilloscope
+      </button>
+      <button class="tab-pill" id="tab-btn-experiments" onclick="switchMainTab('experiments')">
+        🧪 Lab Experiments
+      </button>
+      <button class="tab-pill" id="tab-btn-truth-table" onclick="switchMainTab('truth-table')">
+        📊 Live Truth Table
+      </button>
+      <button class="tab-pill" id="tab-btn-encyclopedia" onclick="switchMainTab('encyclopedia')">
+        📚 TTL IC Pinouts
+      </button>
     </div>
+
     <div class="header-actions">
-      <a href="/app-debug.apk" class="btn btn-green btn-sm" download="LogicLab-v2.4.0.apk" title="Direct APK Download (42MB)">
-        📥 Download APK (42MB)
-      </a>
       <button class="btn btn-outline btn-sm" id="btn-sound-toggle" onclick="toggleAudio()" title="Sound Effects">
         🔊 Sound: ON
       </button>
-      <button class="btn btn-outline btn-sm" id="btn-install-pwa" onclick="installPWA()" title="Install on Laptop">
-        💻 Install Web App
+      <button class="btn btn-outline btn-sm" id="btn-auto-orbit" onclick="toggleAutoOrbit()" title="Toggle Auto Orbit">
+        🌐 Orbit: OFF
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="resetCamera()" title="Reset Camera View">
+        🎯 Reset View
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="resetCircuit()" title="Reset Circuit Switches">
+        🔄 Reset
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+        ⛶
       </button>
     </div>
   </header>
 
-  <!-- Hero Section -->
-  <section class="hero">
-    <div class="badge">Digital Electronics CAD • 3D Hardware Simulation • Oscilloscope</div>
-    <h1>Professional Logic Simulator & IC Trainer Kit</h1>
-    <p>Design real-time digital schematics or wire up an authentic 3D wooden briefcase IC Trainer Kit with clickable metal toggle switches, glowing LED diodes, 4-channel DSO oscilloscope, and dual 7-segment displays.</p>
-    <div class="hero-actions">
-      <button class="btn btn-green" onclick="switchMainTab('trainer'); scrollToWorkbench();">
-        🎛️ Launch 3D Trainer Kit
-      </button>
-      <button class="btn btn-outline" onclick="switchMainTab('cad'); scrollToWorkbench();">
-        📐 Open 2D Schematic CAD
-      </button>
-      <button class="btn btn-outline" onclick="switchMainTab('oscilloscope'); scrollToWorkbench();">
-        📈 Live Oscilloscope
-      </button>
-      <a href="/app-debug.apk" class="btn btn-green" download="LogicLab-v2.4.0.apk">
-        📥 Download Android APK (42MB)
-      </a>
-      <a href="#laptop" class="btn btn-outline">
-        💻 Laptop & PC Guide
-      </a>
-    </div>
-  </section>
-
-  <!-- Master Lab Workbench -->
-  <section class="workbench-container" id="workbench">
-    <div class="workbench-card">
-      <div class="workbench-nav">
-        <div class="tab-pills">
-          <button class="tab-pill active" id="tab-btn-trainer" onclick="switchMainTab('trainer')">
-            🎛️ 3D IC Trainer Kit
-          </button>
-          <button class="tab-pill" id="tab-btn-cad" onclick="switchMainTab('cad')">
-            📐 2D Schematic CAD
-          </button>
-          <button class="tab-pill" id="tab-btn-oscilloscope" onclick="switchMainTab('oscilloscope')">
-            📈 Live Oscilloscope
-          </button>
-          <button class="tab-pill" id="tab-btn-experiments" onclick="switchMainTab('experiments')">
-            🧪 Lab Experiments
-          </button>
-          <button class="tab-pill" id="tab-btn-truth-table" onclick="switchMainTab('truth-table')">
-            📊 Live Truth Table
-          </button>
-          <button class="tab-pill" id="tab-btn-encyclopedia" onclick="switchMainTab('encyclopedia')">
-            📚 TTL IC Encyclopedia
-          </button>
-        </div>
-
-        <div class="workbench-toolbar">
-          <button class="btn btn-outline btn-sm" onclick="resetCircuit()">
-            🔄 Reset Circuit
-          </button>
-          <button class="btn btn-outline btn-sm" id="btn-auto-orbit" onclick="toggleAutoOrbit()">
-            🌐 Auto-Orbit: OFF
-          </button>
-          <button class="btn btn-outline btn-sm" onclick="resetCamera()">
-            🎯 Reset Camera
-          </button>
-          <button class="btn btn-outline btn-sm" onclick="toggleFullscreen()" title="Fullscreen for Laptop Viewing">
-            ⛶ Fullscreen
-          </button>
-        </div>
-      </div>
+  <!-- Master Application Viewport (Runs directly in HTML) -->
+  <main class="app-main">
 
       <!-- View 1: 3D IC Trainer Kit Canvas -->
       <div id="view-trainer" class="canvas-viewport">
@@ -1029,93 +1046,7 @@
         </div>
       </div>
     </div>
-  </section>
-
-  <!-- Hardware Reference Comparison Section -->
-  <section class="reference-section" id="reference">
-    <div class="reference-card">
-      <div class="ref-img-box">
-        <img src="/assets/aistudio/IMG_20260728_112331_0d30b1ab.jpg" alt="Physical Reference PHY-41 Logic Gates Trainer Kit" onerror="this.src='/assets/aistudio/IMG_20261019_232517_34513d6a.jpg'">
-      </div>
-      <div class="ref-content">
-        <div class="badge" style="margin-bottom:0.6rem;">1:1 Physical Apparatus Modeling</div>
-        <h2>PHY-41 Logic Gates Trainer Apparatus</h2>
-        <p>Our 3D simulation accurately reconstructs the complete university lab PHY-41 trainer apparatus shown in your reference image:</p>
-        <ul class="feature-list">
-          <li>Industrial powder-coated grey/silver steel chassis</li>
-          <li>Emerald green PCB panel with "Polytech" logo and "PHY-41" silkscreen</li>
-          <li>8 Left-column vertical metal toggle switches with 1/0 position markers</li>
-          <li>Mains "POWER ON" toggle switch with illuminated red pilot lamp</li>
-          <li>8 Right-column real red cylindrical dome LED diodes with silver turret sockets</li>
-          <li>5 Gate columns: AND (7408), OR (7432), NAND (7400), NOR (7402), EX OR (7486)</li>
-          <li>Bottom row: NOT Gates (7404), 4-Input AND (7420), and 16-pin spare socket</li>
-          <li>Flexible 3D patch jumper cables with glowing illuminated top red LED diode</li>
-        </ul>
-        <button class="btn btn-green" onclick="switchMainTab('trainer'); scrollToWorkbench();">
-          🎛️ Test Virtual Trainer Now
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Laptop / PC Hub Section -->
-  <section class="laptop-section" id="laptop">
-    <div class="laptop-box">
-      <div class="laptop-header">
-        <div class="laptop-title">
-          <span>💻</span>
-          <span>How to Run LogicLab on Your Laptop</span>
-        </div>
-        <button class="btn btn-green" onclick="installPWA()">
-          ⭐ Install Native Web App on Laptop
-        </button>
-      </div>
-      <p style="color: var(--text-secondary); font-size: 0.95rem;">
-        You can use LogicLab on Windows, Mac, or Chromebook laptops through three simple methods:
-      </p>
-
-      <div class="laptop-grid">
-        <div class="laptop-card">
-          <div>
-            <div class="laptop-step-badge">1</div>
-            <h4>Instant Web Desktop (PWA)</h4>
-            <p>Runs as a standalone desktop window on Windows 10 & 11 without needing any emulator. Works with hardware acceleration, full keyboard shortcuts, and offline support.</p>
-          </div>
-          <button class="btn btn-outline btn-sm" onclick="installPWA()">
-            💻 Install Desktop App
-          </button>
-        </div>
-
-        <div class="laptop-card">
-          <div>
-            <div class="laptop-step-badge">2</div>
-            <h4>Windows Subsystem for Android (WSA)</h4>
-            <p>On Windows 11, install WSA from the Microsoft Store. Double-click the downloaded <code>.apk</code> to launch LogicLab with native resizable Windows borders and taskbar pinning.</p>
-          </div>
-          <a href="/app-debug.apk" class="btn btn-outline btn-sm" download>
-            📥 Download .APK
-          </a>
-        </div>
-
-        <div class="laptop-card">
-          <div>
-            <div class="laptop-step-badge">3</div>
-            <h4>Android Emulator (BlueStacks / LDPlayer)</h4>
-            <p>For Windows 10 or gaming laptops, open BlueStacks or LDPlayer and drag & drop the <code>.apk</code> directly into the emulator window to launch immediately.</p>
-          </div>
-          <a href="/app-debug.apk" class="btn btn-outline btn-sm" download>
-            📥 Download .APK
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer>
-    <p>LogicLab • Professional Digital Logic Simulator & CAD Apparatus</p>
-    <p style="margin-top: 0.4rem; font-size: 0.78rem; color: #57606A;">Modeled after physical DTK-series University Electronics Laboratory Trainer Equipment.</p>
-  </footer>
+  </main>
 
   <!-- Web Audio Sound Engine -->
   <script>
@@ -1173,28 +1104,9 @@
     }
   </script>
 
-  <!-- PWA & Navigation Scripts -->
+  <!-- Navigation & Tab Switching Scripts -->
   <script>
-    let deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const installBtn = document.getElementById('btn-install-pwa');
-      if (installBtn) installBtn.style.display = 'inline-flex';
-    });
-
-    function installPWA() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choice) => {
-          deferredPrompt = null;
-        });
-      } else {
-        alert('To install LogicLab on your laptop:\n1. In Chrome / Edge, click the 3-dots menu (⋮)\n2. Select "Install LogicLab..."\n3. Enjoy LogicLab as a native desktop application!');
-      }
-    }
-
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
       });
@@ -1205,20 +1117,38 @@
       tabs.forEach(t => {
         const view = document.getElementById('view-' + t);
         const btn = document.getElementById('tab-btn-' + t);
-        if (view) view.style.display = (t === tab) ? 'block' : 'none';
+        if (view) {
+          if (t === tab) {
+            view.style.display = (t === 'trainer' || t === 'cad') ? 'flex' : 'block';
+          } else {
+            view.style.display = 'none';
+          }
+        }
         if (btn) btn.classList.toggle('active', t === tab);
       });
 
-      if (tab === 'trainer') {
-        resizeTrainer();
-      } else if (tab === 'cad') {
-        resizeCAD();
-      } else if (tab === 'oscilloscope') {
-        resizeScope();
-      } else if (tab === 'truth-table') {
-        updateTruthTable();
-      }
+      // Allow DOM repaint before measuring client dimensions
+      requestAnimationFrame(() => {
+        if (tab === 'trainer') {
+          resizeTrainer();
+        } else if (tab === 'cad') {
+          resizeCAD();
+        } else if (tab === 'oscilloscope') {
+          resizeScope();
+        } else if (tab === 'truth-table') {
+          updateTruthTable();
+        }
+      });
     }
+
+    window.addEventListener('resize', () => {
+      const vTrainer = document.getElementById('view-trainer');
+      const vCad = document.getElementById('view-cad');
+      const vScope = document.getElementById('view-oscilloscope');
+      if (vTrainer && vTrainer.style.display !== 'none') resizeTrainer();
+      if (vCad && vCad.style.display !== 'none') resizeCAD();
+      if (vScope && vScope.style.display !== 'none') resizeScope();
+    });
 
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
@@ -1228,10 +1158,6 @@
           document.exitFullscreen().catch(() => {});
         }
       }
-    }
-
-    function scrollToWorkbench() {
-      document.getElementById('workbench').scrollIntoView({ behavior: 'smooth' });
     }
   </script>
 

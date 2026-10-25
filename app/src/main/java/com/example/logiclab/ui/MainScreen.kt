@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -177,7 +178,7 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
             when (currentMode) {
                 AppMode.SIMULATOR -> {
@@ -405,16 +406,24 @@ fun MainScreen(
                                 .background(themeColors.panelBg)
                                 .navigationBarsPadding()
                                 .border(1.dp, themeColors.border)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                                .padding(horizontal = 4.dp, vertical = 2.5.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Row(
+                                modifier = Modifier.weight(1f, fill = false),
+                                horizontalArrangement = Arrangement.spacedBy(2.5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 DockTabButton(
-                                    label = "Truth Table",
+                                    label = "Truth",
                                     icon = Icons.Default.TableChart,
                                     isActive = bottomPanel == BottomPanelType.TRUTH_TABLE,
-                                    onClick = { viewModel.setBottomPanel(BottomPanelType.TRUTH_TABLE) },
+                                    onClick = {
+                                        viewModel.setBottomPanel(
+                                            if (bottomPanel == BottomPanelType.TRUTH_TABLE) BottomPanelType.NONE else BottomPanelType.TRUTH_TABLE
+                                        )
+                                    },
                                     tag = "dock_truth_table_btn"
                                 )
                                 DockTabButton(
@@ -423,23 +432,35 @@ fun MainScreen(
                                     badgeCount = errorCount + warningCount,
                                     badgeColor = if (errorCount > 0) SignalError else SignalUnknown,
                                     isActive = bottomPanel == BottomPanelType.DIAGNOSTICS,
-                                    onClick = { viewModel.setBottomPanel(BottomPanelType.DIAGNOSTICS) },
+                                    onClick = {
+                                        viewModel.setBottomPanel(
+                                            if (bottomPanel == BottomPanelType.DIAGNOSTICS) BottomPanelType.NONE else BottomPanelType.DIAGNOSTICS
+                                        )
+                                    },
                                     tag = "dock_diagnostics_btn"
                                 )
                                 DockTabButton(
-                                    label = "Timing View",
+                                    label = "Timing",
                                     icon = Icons.Default.Analytics,
                                     isActive = bottomPanel == BottomPanelType.TIMING_DIAGRAM,
-                                    onClick = { viewModel.setBottomPanel(BottomPanelType.TIMING_DIAGRAM) },
+                                    onClick = {
+                                        viewModel.setBottomPanel(
+                                            if (bottomPanel == BottomPanelType.TIMING_DIAGRAM) BottomPanelType.NONE else BottomPanelType.TIMING_DIAGRAM
+                                        )
+                                    },
                                     tag = "dock_timing_btn"
                                 )
                                 DockTabButton(
-                                    label = "Oscilloscope",
+                                    label = "Scope",
                                     icon = Icons.Default.ShowChart,
                                     isActive = bottomPanel == BottomPanelType.OSCILLOSCOPE,
                                     badgeCount = if (selectedWireId != null || probedWireIds.isNotEmpty()) probedWireIds.size.coerceAtLeast(1) else 0,
                                     badgeColor = Color(0xFF00E5FF),
-                                    onClick = { viewModel.setBottomPanel(BottomPanelType.OSCILLOSCOPE) },
+                                    onClick = {
+                                        viewModel.setBottomPanel(
+                                            if (bottomPanel == BottomPanelType.OSCILLOSCOPE) BottomPanelType.NONE else BottomPanelType.OSCILLOSCOPE
+                                        )
+                                    },
                                     tag = "dock_oscilloscope_btn"
                                 )
                             }
@@ -461,7 +482,7 @@ fun MainScreen(
                                     .clip(RoundedCornerShape(3.dp))
                                     .background(snapBg)
                                     .clickable { viewModel.snapToGrid.value = !snapToGrid }
-                                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                                    .padding(horizontal = 4.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -470,11 +491,13 @@ fun MainScreen(
                                     tint = snapColor,
                                     modifier = Modifier.size(11.dp)
                                 )
-                                Spacer(modifier = Modifier.width(3.dp))
+                                Spacer(modifier = Modifier.width(2.5.dp))
                                 Text(
                                     text = if (snapToGrid) "Snap ON" else "Snap OFF",
                                     color = snapColor,
-                                    fontSize = 9.5.sp
+                                    fontSize = 8.5.sp,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -483,20 +506,32 @@ fun MainScreen(
             } // close Column
         }
         AppMode.LEARN -> {
-                    LearnModeView(
-                        onOpenStarterCircuit = { circuitId ->
-                            viewModel.loadStarterCircuitById(circuitId)
-                        }
-                    )
-                }
-                AppMode.EXPERIMENTS -> {
-                    ExperimentModeView(
-                        onLoadExperimentInSimulator = { circuitId ->
-                            viewModel.loadStarterCircuitById(circuitId)
-                        }
-                    )
-                }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+            ) {
+                LearnModeView(
+                    onOpenStarterCircuit = { circuitId ->
+                        viewModel.loadStarterCircuitById(circuitId)
+                    }
+                )
             }
+        }
+        AppMode.EXPERIMENTS -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+            ) {
+                ExperimentModeView(
+                    onLoadExperimentInSimulator = { circuitId ->
+                        viewModel.loadStarterCircuitById(circuitId)
+                    }
+                )
+            }
+        }
+    }
         }
     }
 
@@ -654,7 +689,7 @@ fun DockTabButton(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 6.dp, vertical = 3.dp)
+            .padding(horizontal = 4.dp, vertical = 2.5.dp)
             .testTag(tag),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -662,28 +697,33 @@ fun DockTabButton(
             imageVector = icon,
             contentDescription = label,
             tint = tabIconColor,
-            modifier = Modifier.size(12.dp)
+            modifier = Modifier.size(11.dp)
         )
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(2.5.dp))
         Text(
             text = label,
             color = tabTextColor,
-            fontSize = 9.5.sp,
+            fontSize = 8.8.sp,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
             fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
         )
         if (badgeCount > 0) {
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(2.5.dp))
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(badgeColor)
-                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                    .padding(horizontal = 3.5.dp, vertical = 0.5.dp)
             ) {
                 Text(
                     text = "$badgeCount",
                     color = Color.Black,
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 7.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }
